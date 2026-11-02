@@ -1,0 +1,125 @@
+name: PR conventions
+
+# Every pull request must have:
+#   - a Conventional Commits title:        feat(scanner): flag stock openers
+#   - a branch named after its issue:       feat/12-scanner-stock-openers
+#   - a linked issue in its description:    Closes #12
+# and gets a type label from its title. See CONTRIBUTING.md.
+#
+# PR text reaches the scripts through environment variables, never straight
+# into the script, so a crafted title or description can't run commands.
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+env:
+  TYPES: feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert
+
+jobs:
+  title:
+    name: PR title
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the title follows Conventional Commits
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pattern="^(${TYPES})(\([a-z0-9-]+\))?!?: [^ ].*[^. ]$"
+          echo "Title: $TITLE"
+          if [[ ! "$TITLE" =~ $pattern ]]; then
+            echo "::error title=PR title::Use type(optional-scope): summary, for example 'feat(scanner): flag stock openers'. Types: ${TYPES//|/, }. No period at the end. See CONTRIBUTING.md."
+            exit 1
+          fi
+          if (( ${#TITLE} > 72 )); then
+            echo "::error title=PR title::Keep the title to 72 characters or fewer. This one has ${#TITLE}."
+            exit 1
+          fi
+          echo "PR title follows the convention."
+
+  branch:
+    name: Branch name
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the branch is named type/<issue>-short-description
+        env:
+          BRANCH: ${{ github.head_ref }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          echo "Branch: $BRANCH"
+          if [[ "$AUTHOR" == "dependabot[bot]" ]]; then
+            echo "Dependabot names its own branches; skipped."
+            exit 0
+          fi
+          pattern="^(${TYPES})/[0-9]+-[a-z0-9]+(-[a-z0-9]+)*$"
+          if [[ ! "$BRANCH" =~ $pattern ]]; then
+            echo "::error title=Branch name::Name the branch type/<issue>-short-description, for example feat/12-scanner-stock-openers. Rename it in GitHub (Branches page, pencil icon) and the pull request follows. See CONTRIBUTING.md."
+            exit 1
+          fi
+          echo "Branch name follows the convention."
+
+  issue:
+    name: Linked issue
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the description closes an issue
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          if [[ "$AUTHOR" == "dependabot[bot]" ]]; then
+            echo "Dependabot updates don't need an issue; skipped."
+            exit 0
+          fi
+          if printf '%s\n' "$BODY" | grep -Eiq '(^|[^a-z])(close[sd]?|fix(e[sd])?|resolve[sd]?):? +#[0-9]+'; then
+            printf '%s\n' "$BODY" | grep -Eio '(close[sd]?|fix(e[sd])?|resolve[sd]?):? +#[0-9]+' | sed 's/^/Linked: /'
+            exit 0
+          fi
+          echo "::error title=Linked issue::Add 'Closes #<issue>' to the pull request description so the issue closes when this merges. Open an issue first if there isn't one. See CONTRIBUTING.md."
+          exit 1
+
+  label:
+    name: Type label
+    needs: title
+    # A fork's token can't write labels, so only label pull requests from this repo.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Label the pull request by its type
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+          PR: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          type="${TITLE%%[(!:]*}"
+          case "$type" in
+            feat)     label=feature;       color=1d76db; desc="New feature" ;;
+            fix)      label=bug;           color=d73a4a; desc="Bug fix" ;;
+            docs)     label=documentation; color=0075ca; desc="Documentation only" ;;
+            style)    label=style;         color=c5def5; desc="Formatting, no change in behavior" ;;
+            refactor) label=refactor;      color=bfd4f2; desc="Restructuring, no change in behavior" ;;
+            perf)     label=performance;   color=5319e7; desc="Speed improvement" ;;
+            test)     label=tests;         color=0e8a16; desc="Tests only" ;;
+            build)    label=build;         color=fbca04; desc="Build, tooling or dependencies" ;;
+            ci)       label=ci;            color=f9d0c4; desc="GitHub Actions workflows" ;;
+            chore)    label=chore;         color=d4c5f9; desc="Housekeeping" ;;
+            revert)   label=revert;        color=b60205; desc="Reverts an earlier change" ;;
+            *) echo "No type found in the title; the PR title check explains why."; exit 0 ;;
+          esac
+          gh label create "$label" --color "$color" --description "$desc" --force
+          # Drop a type label left over from an earlier title.
+          all="feature bug documentation style refactor performance tests build ci chore revert"
+          for old in $(gh pr view "$PR" --json labels --jq '.labels[].name'); do
+            if [[ " $all " == *" $old "* && "$old" != "$label" ]]; then
+              gh pr edit "$PR" --remove-label "$old"
+            fi
+          done
+          gh pr edit "$PR" --add-label "$label"
+          echo "Labeled #$PR as $label."
