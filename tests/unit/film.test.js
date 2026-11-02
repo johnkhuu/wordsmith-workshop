@@ -93,3 +93,15 @@ test("the chatbot's words land while it's speaking", () => {
   const first = bot[0].at, last = bot[bot.length - 1].at + bot[bot.length - 1].dur;
   for (const t of S.WORD_TIMES) assert.ok(t >= first && t <= last, `word at ${t}`);
 });
+
+test("every method's rewrite passes the scanner, with the strictest checks on", () => {
+  const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  const afters = [...html.matchAll(/<p class="example-after">([\s\S]*?)<\/p>/g)].map((m) =>
+    m[1].replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim());
+  assert.equal(afters.length, 6);
+  for (const text of afters) {
+    const r = scan(text, { wwb: true });
+    const hits = r.findings.filter((f) => f.severity !== "weak").map((f) => f.code + " " + f.match);
+    assert.deepEqual(hits, [], text);
+  }
+});

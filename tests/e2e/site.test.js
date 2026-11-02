@@ -247,10 +247,10 @@ test("dark mode changes the palette, and an explicit light theme wins over it", 
 
 test("the page's own copy passes the scanner", async () => {
   // A site about avoiding AI tells shouldn't have any. Quoted examples of
-  // tells, the struck-out "before" email and the scanner itself are skipped.
+  // tells, the "before" examples and the scanner itself are skipped.
   const { page, context } = await open();
   const copy = await page.evaluate(() => {
-    const skip = ".sheet-before, q, del, .scan-grid, .scan-controls, .film-caption, .film-status, script, style, nav";
+    const skip = ".example-before, q, del, .scan-grid, .scan-controls, .film-caption, .film-status, script, style, nav";
     const blocks = document.querySelectorAll("main p, main h1, main h2, main h3, main li, main th, main td, footer p");
     const out = [];
     for (const el of blocks) {
@@ -266,5 +266,43 @@ test("the page's own copy passes the scanner", async () => {
   const hits = r.findings.filter((f) => f.severity !== "weak").map((f) => `${f.code} ${f.match}`);
   assert.ok(r.words > 800, "expected to collect the page copy");
   assert.deepEqual(hits, []);
+  await context.close();
+});
+
+test("method tabs show one method at a time and work with the keyboard", async () => {
+  const { page, context, errors } = await open();
+  const visible = () => page.$$eval(".method-panel", (ps) => ps.filter((p) => !p.hidden && p.offsetHeight > 0).map((p) => p.id));
+  assert.deepEqual(await visible(), ["panel-pyramid"]);
+  await page.click("#tab-wwb");
+  assert.deepEqual(await visible(), ["panel-wwb"]);
+  assert.equal(await page.getAttribute("#tab-wwb", "aria-selected"), "true");
+  assert.equal(await page.getAttribute("#tab-pyramid", "aria-selected"), "false");
+  await page.focus("#tab-wwb");
+  await page.keyboard.press("ArrowRight");
+  assert.deepEqual(await visible(), ["panel-data"]);
+  assert.equal(await page.evaluate(() => document.activeElement.id), "tab-data");
+  await page.keyboard.press("ArrowRight");
+  assert.deepEqual(await visible(), ["panel-pyramid"], "wraps around to the first method");
+  await page.keyboard.press("End");
+  assert.deepEqual(await visible(), ["panel-data"]);
+  await page.keyboard.press("Home");
+  assert.deepEqual(await visible(), ["panel-pyramid"]);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test("every method shows a before, an after and the reasons", async () => {
+  const { page, context } = await open();
+  const panels = await page.$$eval(".method-panel", (ps) => ps.map((p) => ({
+    id: p.id,
+    before: p.querySelector(".example-before").textContent.trim().length,
+    after: p.querySelector(".example-after").textContent.trim().length,
+    why: p.querySelectorAll(".method-why li").length,
+  })));
+  assert.equal(panels.length, 6);
+  for (const p of panels) {
+    assert.ok(p.before > 40 && p.after > 40, p.id + " needs a real before and after");
+    assert.ok(p.why >= 2, p.id + " needs reasons");
+  }
   await context.close();
 });
