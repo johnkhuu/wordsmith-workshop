@@ -82,16 +82,27 @@
         });
       }
     });
+    // Sweep left to right: open spans as their start is reached, close them at
+    // their end. Only the few spans open at once are examined per piece.
     const points = Array.from(new Set(spans.flatMap((s) => [s.start, s.end]))).sort((a, b) => a - b);
+    const byStart = spans.slice().sort((a, b) => a.start - b.start);
+    const byEnd = spans.slice().sort((a, b) => a.end - b.end);
+    const open = new Set();
     const segments = [];
+    let si = 0;
+    let ei = 0;
     for (let k = 0; k + 1 < points.length; k++) {
       const a = points[k];
-      const b = points[k + 1];
-      const covering = spans.filter((s) => s.start <= a && s.end >= b);
-      if (!covering.length) continue;
+      while (ei < byEnd.length && byEnd[ei].end <= a) open.delete(byEnd[ei++]);
+      while (si < byStart.length && byStart[si].start <= a) open.add(byStart[si++]);
+      if (!open.size) continue;
       let sev = "weak";
-      for (const s of covering) if (RANK[s.sev] < RANK[sev]) sev = s.sev;
-      segments.push({ start: a, end: b, sev, ids: Array.from(new Set(covering.map((s) => s.i))) });
+      const ids = new Set();
+      for (const s of open) {
+        if (RANK[s.sev] < RANK[sev]) sev = s.sev;
+        ids.add(s.i);
+      }
+      segments.push({ start: a, end: points[k + 1], sev, ids: Array.from(ids) });
     }
     return segments;
   }
@@ -108,6 +119,9 @@
     // A trailing newline needs a character after it to take up a line.
     if (text.endsWith("\n")) html += " ";
     backdrop.innerHTML = html;
+    // The backdrop never scrolls on its own; keep it pinned to the text.
+    backdrop.scrollTop = 0;
+    backdrop.scrollLeft = 0;
   }
 
   function verdict(c, words) {
@@ -221,7 +235,13 @@
     if (!btn) return;
     const marks = marksFor(btn.dataset.i);
     if (!marks.length) return;
-    marks[0].scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+    // Scroll the window, not the mark: scrollIntoView would also scroll the
+    // overflow-hidden backdrop and leave the highlights off their words.
+    const box = marks[0].getBoundingClientRect();
+    window.scrollTo({
+      top: window.scrollY + box.top - (window.innerHeight - box.height) / 2,
+      behavior: reduceMotion ? "auto" : "smooth",
+    });
     backdrop.querySelectorAll(".is-flash").forEach((m) => m.classList.remove("is-flash"));
     marks.forEach((m) => {
       void m.offsetWidth; // restart the animation

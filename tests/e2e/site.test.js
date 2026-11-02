@@ -97,9 +97,30 @@ test("the flash still shows with reduced motion", async () => {
   const { page, context } = await open({ reducedMotion: "reduce" });
   const btn = page.locator("button.finding").first();
   const i = await btn.getAttribute("data-i");
+  const mark = `#scan-backdrop mark[data-ids~="${i}"]`;
+  const bgOf = () => page.$eval(mark, (m) => getComputedStyle(m).backgroundColor);
+  const before = await bgOf();
   await btn.click();
-  const bg = await page.$eval(`#scan-backdrop mark[data-ids~="${i}"]`, (m) => getComputedStyle(m).backgroundColor);
-  assert.notEqual(bg, "rgba(0, 0, 0, 0)");
+  const during = await bgOf();
+  const tint = await page.evaluate(() => {
+    const probe = document.createElement("div");
+    probe.style.background = "var(--pencil-tint)";
+    document.body.append(probe);
+    const c = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return c;
+  });
+  assert.notEqual(during, before, "the mark should change when flashed");
+  assert.equal(during, tint);
+  await context.close();
+});
+
+test("clicking a finding leaves the highlights on their words", async () => {
+  const { page, context } = await open({ width: 390, height: 600 });
+  // Click the last finding so the page has to scroll a long way.
+  await page.locator("button.finding").last().click();
+  await page.waitForTimeout(800);
+  assert.equal(await page.$eval("#scan-backdrop", (el) => el.scrollTop), 0);
   await context.close();
 });
 
