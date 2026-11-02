@@ -1,4 +1,11 @@
-/* The workshop on the page: wires assets/workshop-core.js to the DOM. Runs locally. */
+/*
+ * The workshop on the page: four steps, one at a time.
+ *   1 Paste   the draft
+ *   2 Review  what's holding it back, and the methods picked for it
+ *   3 Fix     the rewrite, plus one card per line that still needs a change
+ *   4 Send    the finished message, what changed, and a last read
+ * The logic lives in assets/workshop-core.js. Everything runs locally.
+ */
 (function () {
   "use strict";
 
@@ -10,41 +17,42 @@
 
   const $ = (id) => document.getElementById(id);
   const draftEl = $("ws-draft");
-  const draftMeta = $("ws-draft-meta");
-  const chipsEl = $("ws-chips");
-  const trayHint = $("ws-tray-hint");
-  const targetEl = $("ws-target");
-  const slotsEl = $("ws-slots");
+  const pasteHint = $("wz-paste-hint");
+  const sentencesEl = $("wz-sentences");
+  const flagsEl = $("wz-flags");
+  const methodsEl = $("wz-methods");
   const preview = $("ws-preview");
-  const scoreEl = $("ws-score");
   const cutsEl = $("ws-cuts");
-  const checksEl = $("ws-checks");
+  const taskEl = $("wz-task");
+  const progressEl = $("wz-progress");
+  const progressBar = $("wz-progress-bar");
+  const progressText = $("wz-progress-text");
+  const slotsEl = $("ws-slots");
+  const finalEl = $("wz-final");
+  const finalNote = $("wz-final-note");
+  const winsEl = $("wz-wins");
+  const asksEl = $("wz-asks");
+  const allSet = $("wz-all-set");
   const statusEl = $("ws-status");
-  const fillBtn = $("ws-fill");
-  const undoBtn = $("ws-undo");
   const copyBtn = $("ws-copy");
-  const toScanner = $("ws-to-scanner");
-  const trimEl = $("ws-trim");
-  const methodInputs = Array.from(root.querySelectorAll("input[data-method]"));
-  const exampleButtons = Array.from(root.querySelectorAll("[data-example]:not([data-example='clear'])"));
-  const pressExample = (key) => exampleButtons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.example === key)));
+  const panels = Array.from(root.querySelectorAll(".wz-panel"));
+  const stepButtons = Array.from(root.querySelectorAll(".wz-step"));
+  const STAGES = ["paste", "review", "fix", "send"];
   const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  const METHOD_NAMES = {
-    pyramid: "Pyramid", scqa: "SCQA", mece: "MECE", inverted: "Inverted Pyramid",
-    wwb: "Writing Without Bullshit", data: "Storytelling with Data", audit: "Tell audit",
-  };
-  const STATUS_TEXT = { warn: "Fix", info: "Tip", self: "Ask yourself", pass: "Done" };
-  const FIX_FOR_PAGE = {
-    B5: "Fill it in or delete it.",
-    C7: "Replace each one with the plain or specific word.",
-    D6m: "Open on the point, or on your own greeting.",
-  };
-
-  let state = W.emptyState();
+  let reached = 0;               // the furthest step opened so far
   let parsed = W.parseDraft("");
-  let undoState = null;
-  let active = { field: "point", index: 0 };
+  let methods = W.emptyState().methods;
+  let state = W.emptyState();
+  let seen = new Set();          // fix cards shown since the rewrite was made
+  let skipped = new Set();
+  let fixed = 0;
+  let current = null;            // the key of the fix card on screen
+  let flashPart = null;          // the part of the rewrite that just changed
+  let exampleMethods = null;     // an example brings its own method
+  let recsShown = [];
+  let pointFrom = null;          // where the point sat in the draft, kept from the first pass
+  let rewriteCuts = [];          // the stock phrases the first pass trimmed
 
   function esc(s) {
     return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -57,509 +65,615 @@
     el.style.height = "auto";
     el.style.height = el.scrollHeight + 2 + "px";
   }
+  const plural = (n, one, many) => n + " " + (n === 1 ? one : many);
+  const CHECK_SVG = '<svg viewBox="0 0 24 24"><path d="M9.5 16.2L5.3 12l-1.4 1.4 5.6 5.6 11-11-1.4-1.4z"/></svg>';
+  const CROSS_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 5L12 10.5 17.5 5 19 6.5 13.5 12l5.5 5.5-1.5 1.5-5.5-5.5L6.5 19 5 17.5 10.5 12 5 6.5z"/></svg>';
 
   // ---------------------------------------------------------------------
-  // Slots
+  // Moving between steps
   // ---------------------------------------------------------------------
 
-  function ownerOf(field) {
-    const m = state.methods;
-    if (field === "point") return m.inverted ? "inverted" : m.scqa ? "scqa" : m.data ? "data" : "pyramid";
-    if (field === "situation" || field === "complication" || field === "order") return "scqa";
-    if (field === "groups" || field === "rule") return "mece";
-    if (field === "background") return "inverted";
-    if (field === "subject") return "wwb";
-    return "pyramid";
-  }
-
-  function slotHead(id, label, field, hint) {
-    const owner = ownerOf(field);
-    return '<div class="slot-head"><label class="slot-label" for="' + id + '">' + esc(label) + "</label>" +
-      (field === "greeting" || field === "signoff" ? "" : '<span class="slot-owner m-' + owner + '">' + esc(METHOD_NAMES[owner]) + "</span>") +
-      "</div>" + (hint ? '<p class="slot-hint" id="' + id + '-hint">' + esc(hint) + "</p>" : "");
-  }
-
-  function textSlot(field, copy, rows, extraClass) {
-    const id = "ws-" + field;
-    return '<div class="slot ' + (extraClass || "") + '" data-slot="' + field + '">' +
-      slotHead(id, copy.label, field, copy.hint) +
-      '<textarea class="slot-input" id="' + id + '" data-field="' + field + '" rows="' + (rows || 2) + '"' +
-      (copy.hint ? ' aria-describedby="' + id + '-hint"' : "") +
-      ' placeholder="' + esc("Example: " + copy.example) + '"></textarea></div>';
-  }
-
-  function renderSlots() {
-    const m = state.methods;
-    const copy = W.slotCopy(m);
-    let html = "";
-    html += '<div class="slot-row">' + textSlot("greeting", copy.greeting, 1, "slot-small") + "</div>";
-
-    if (m.wwb) {
-      html += '<div class="slot" data-slot="subject"><label class="toggle"><input type="checkbox" id="ws-is-email"' +
-        (state.isEmail ? " checked" : "") + "><span>This is an email</span></label>" +
-        (state.isEmail ? textSlot("subject", copy.subject, 1) : "") + "</div>";
-    }
-
-    const opening = [];
-    const pointSlot = textSlot("point", copy.point, 2, "slot-point");
-    if (m.scqa) {
-      const S = textSlot("situation", copy.situation, 2);
-      const C = textSlot("complication", copy.complication, 2);
-      const order = m.inverted ? "asc" : state.order;
-      if (order === "sca") opening.push(S, C, pointSlot);
-      else if (order === "csa") opening.push(C, S, pointSlot);
-      else opening.push(pointSlot, S, C);
-    } else {
-      opening.push(pointSlot);
-    }
-    if (m.scqa && !m.inverted) {
-      const opts = [["asc", "Answer first", "busy readers"], ["sca", "Situation first", "needs grounding"], ["csa", "Problem first", "urgent"]];
-      html += '<fieldset class="slot slot-order"><legend class="slot-label">Opening order <span class="slot-owner m-scqa">SCQA</span></legend><div class="ws-radios">' +
-        opts.map(([v, l, d]) => '<label class="ws-radio"><input type="radio" name="ws-order" value="' + v + '"' +
-          (state.order === v ? " checked" : "") + "><span>" + l + ' <small>' + d + "</small></span></label>").join("") +
-        "</div></fieldset>";
-    }
-    html += '<div class="ws-opening">' + opening.join("") + "</div>";
-
-    if (m.mece) {
-      html += '<div class="slot" data-slot="groups"><div class="slot-head"><span class="slot-label">' + esc(copy.groups.label) +
-        '</span><span class="slot-owner m-mece">MECE</span></div><p class="slot-hint" id="ws-groups-hint">' + esc(copy.groups.hint) + "</p>" +
-        '<label class="slot-sublabel" for="ws-rule">' + esc(copy.rule.label) + "</label>" +
-        '<input class="slot-input" id="ws-rule" data-field="rule" list="ws-rules" aria-describedby="ws-groups-hint" placeholder="Example: By person">' +
-        '<datalist id="ws-rules"><option value="By person"><option value="By time"><option value="Settled vs. still needed"><option value="By option"><option value="By cost"></datalist>' +
-        '<ol class="ws-groups">' + state.groups.map((g, i) => groupHtml(g, i)).join("") + "</ol>" +
-        '<button type="button" class="btn btn-small" data-action="add-group">Add a group</button></div>';
-    } else {
-      const c = copy.support;
-      html += '<div class="slot" data-slot="support">' + slotHead("ws-support-0", c.label, "support", c.hint) +
-        '<ol class="ws-items">' + state.support.map((t, i) => itemHtml(i, c)).join("") + "</ol>" +
-        '<button type="button" class="btn btn-small" data-action="add-item">Add a line</button></div>';
-    }
-    if (m.inverted) html += textSlot("background", copy.background, 2);
-    html += textSlot("close", copy.close, 2);
-    html += '<div class="slot-row">' + textSlot("signoff", copy.signoff, 2, "slot-small") + "</div>";
-    slotsEl.innerHTML = html;
-
-    // Values go in as properties, never as HTML.
-    slotsEl.querySelectorAll("[data-field]").forEach((el) => {
-      const f = el.dataset.field;
-      const i = Number(el.dataset.index || 0);
-      if (f === "support") el.value = state.support[i] || "";
-      else if (f === "group-label") el.value = state.groups[i].label;
-      else if (f === "group-items") el.value = state.groups[i].items;
-      else if (f === "group-mode") el.value = state.groups[i].mode;
-      else el.value = state[f] || "";
-      if (el.tagName === "TEXTAREA") grow(el);
+  function syncSteps(active) {
+    const i = STAGES.indexOf(active);
+    stepButtons.forEach((b, k) => {
+      b.disabled = k > reached;
+      b.classList.toggle("is-done", k < i || (k <= reached && k !== i && k < reached));
+      if (k === i) b.setAttribute("aria-current", "step");
+      else b.removeAttribute("aria-current");
     });
-    syncTarget();
   }
 
-  function itemHtml(i, c) {
-    const id = "ws-support-" + i;
-    const n = state.support.length;
-    return '<li class="ws-item"><label class="sr-only" for="' + id + '">' + esc(c.label) + ", line " + (i + 1) + "</label>" +
-      '<textarea class="slot-input" id="' + id + '" data-field="support" data-index="' + i + '" rows="2"' +
-      (i === 0 ? ' aria-describedby="ws-support-0-hint"' : "") + ' placeholder="' + esc(i === 0 ? "Example: " + c.example : "") + '"></textarea>' +
-      '<span class="ws-item-tools">' +
-      '<button type="button" class="icon-btn" data-action="up" data-index="' + i + '" aria-label="Move line ' + (i + 1) + ' up"' + (i === 0 ? " disabled" : "") + '><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6l-6 7h12z"/></svg></button>' +
-      '<button type="button" class="icon-btn" data-action="down" data-index="' + i + '" aria-label="Move line ' + (i + 1) + ' down"' + (i === n - 1 ? " disabled" : "") + '><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 18l6-7H6z"/></svg></button>' +
-      '<button type="button" class="icon-btn" data-action="remove" data-index="' + i + '" aria-label="Remove line ' + (i + 1) + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 5L12 10.5 17.5 5 19 6.5 13.5 12l5.5 5.5-1.5 1.5-5.5-5.5L6.5 19 5 17.5 10.5 12 5 6.5z"/></svg></button>' +
-      "</span></li>";
-  }
-
-  function groupHtml(g, i) {
-    const n = i + 1;
-    return '<li class="ws-group">' +
-      '<div class="ws-group-head"><label class="sr-only" for="ws-glabel-' + i + '">Group ' + n + ' name</label>' +
-      '<input class="slot-input ws-group-label" id="ws-glabel-' + i + '" data-field="group-label" data-index="' + i + '" placeholder="Group ' + n + ' name, like Ana or Settled">' +
-      '<label class="sr-only" for="ws-gmode-' + i + '">Group ' + n + ' shows as</label>' +
-      '<select class="ws-select" id="ws-gmode-' + i + '" data-field="group-mode" data-index="' + i + '">' +
-      '<option value="auto">Auto</option><option value="sentence">A sentence</option><option value="list">A numbered list</option></select>' +
-      '<button type="button" class="icon-btn" data-action="remove-group" data-index="' + i + '" aria-label="Remove group ' + n + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 5L12 10.5 17.5 5 19 6.5 13.5 12l5.5 5.5-1.5 1.5-5.5-5.5L6.5 19 5 17.5 10.5 12 5 6.5z"/></svg></button></div>' +
-      '<label class="sr-only" for="ws-gitems-' + i + '">Group ' + n + " items, one per line</label>" +
-      '<textarea class="slot-input" id="ws-gitems-' + i + '" data-field="group-items" data-index="' + i + '" rows="3" placeholder="One item per line"></textarea></li>';
-  }
-
-  function labelFor(target) {
-    const copy = W.slotCopy(state.methods);
-    if (target.field === "support") return state.methods.inverted ? "Details" : "What backs it up";
-    if (target.field === "group-items" || target.field === "group-label") {
-      const g = state.groups[target.index];
-      return g && g.label.trim() ? "the " + g.label.trim() + " group" : "group " + (target.index + 1);
+  function go(next, opts) {
+    opts = opts || {};
+    const i = STAGES.indexOf(next);
+    if (i < 0 || i > reached) return;
+    panels.forEach((p) => { p.hidden = p.dataset.stage !== next; });
+    root.dataset.stage = next;
+    syncSteps(next);
+    if (next === "fix") renderFix();
+    if (next === "send") renderSend();
+    if (opts.focus !== false) {
+      const section = document.getElementById("workshop");
+      const heading = root.querySelector('.wz-panel[data-stage="' + next + '"] .wz-title');
+      if (opts.scroll || root.getBoundingClientRect().top < 0) {
+        section.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+      }
+      if (heading) heading.focus({ preventScroll: true });
     }
-    return (copy[target.field] && copy[target.field].label) || "Your point";
   }
 
-  function syncTarget() {
-    const exists = (t) => {
-      if (t.field === "support") return !state.methods.mece && t.index < state.support.length;
-      if (t.field === "group-items" || t.field === "group-label") return state.methods.mece && t.index < state.groups.length;
-      if (t.field === "situation" || t.field === "complication") return state.methods.scqa;
-      if (t.field === "background") return state.methods.inverted;
-      if (t.field === "subject") return state.methods.wwb && state.isEmail;
-      return ["point", "close", "greeting", "signoff"].includes(t.field);
-    };
-    if (!exists(active)) active = { field: "point", index: 0 };
-    if (active.field === "group-label") active = { field: "group-items", index: active.index };
-    targetEl.textContent = labelFor(active);
-  }
+  function reach(next) { reached = Math.max(reached, STAGES.indexOf(next)); }
+
+  stepButtons.forEach((b) => b.addEventListener("click", () => go(b.dataset.go)));
+  root.querySelectorAll(".wz-nav [data-go]").forEach((b) => b.addEventListener("click", () => go(b.dataset.go)));
 
   // ---------------------------------------------------------------------
-  // The draft and its sentences
+  // Step 1: paste
   // ---------------------------------------------------------------------
 
-  function renderChips() {
-    if (!parsed.pieces.length) {
-      chipsEl.innerHTML = "";
-      trayHint.hidden = true;
+  function check(opts) {
+    const text = draftEl.value;
+    if (!W.wordCount(text)) {
+      pasteHint.textContent = "Paste or type a draft first.";
+      draftEl.focus();
       return;
     }
-    trayHint.hidden = false;
-    chipsEl.innerHTML = parsed.pieces.map((p) => {
-      const f = p.flags;
-      const tag = f.filler ? '<span class="ws-chip-tag">' + esc(f.filler) + "</span>" : "";
-      return '<li><button type="button" class="ws-chip' + (f.filler ? " is-filler" : "") + '" data-piece="' + p.id + '">' +
-        '<span class="ws-chip-text">' + esc(p.text) + "</span>" + tag +
-        '<span class="sr-only ws-chip-state"></span></button></li>';
-    }).join("");
-    syncChips();
+    pasteHint.textContent = "";
+    parsed = W.parseDraft(text);
+    const recs = W.recommend(parsed, text);
+    methods = W.methodsFrom(exampleMethods || recs.map((r) => r.method));
+    renderReview(exampleMethods ? exampleMethods.map((k) => ({ method: k, why: W.METHOD_JOBS[k], example: true })) : recs);
+    reached = 1;
+    go("review", opts);
   }
 
-  function syncChips() {
-    const used = W.usedPieces(state, parsed);
-    chipsEl.querySelectorAll(".ws-chip").forEach((b) => {
-      const on = used.has(b.dataset.piece);
-      b.classList.toggle("is-used", on);
-      const p = parsed.pieces.find((x) => x.id === b.dataset.piece);
-      b.querySelector(".ws-chip-state").textContent =
-        (on ? " (in use)" : "") + (p && p.flags.filler ? " (likely filler)" : "");
-    });
+  function loadExample(key, opts) {
+    const ex = W.EXAMPLES[key];
+    if (!ex) return;
+    draftEl.value = ex.text;
+    grow(draftEl);
+    exampleMethods = ex.methods.slice();
+    check(opts);
+    say("Loaded the " + ex.label.toLowerCase() + " example.");
   }
 
-  function renderDraftMeta() {
-    const text = draftEl.value;
-    const n = W.wordCount(text);
-    if (!n) { draftMeta.textContent = ""; return; }
-    const t = W.tellCount(text, state.methods.wwb);
-    const bits = [n + (n === 1 ? " word" : " words"), parsed.pieces.length + (parsed.pieces.length === 1 ? " sentence" : " sentences")];
-    const tells = t.strong + t.moderate;
-    bits.push(tells + (tells === 1 ? " tell" : " tells"));
-    draftMeta.textContent = bits.join(" · ");
-  }
+  $("wz-check").addEventListener("click", () => check());
+  draftEl.addEventListener("input", () => {
+    exampleMethods = null;
+    pasteHint.textContent = "";
+    grow(draftEl);
+    // A changed draft needs a fresh review before the later steps mean anything.
+    if (reached > 0) { reached = 0; syncSteps("paste"); }
+  });
+  draftEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); check(); }
+  });
+  root.querySelectorAll("[data-example]").forEach((b) => b.addEventListener("click", () => loadExample(b.dataset.example)));
+  document.querySelectorAll("[data-try]").forEach((b) => b.addEventListener("click", () => loadExample(b.dataset.try, { scroll: true })));
 
   // ---------------------------------------------------------------------
-  // The rewrite, the score and the checks
+  // Step 2: review
   // ---------------------------------------------------------------------
 
-  function marked(text, findings) {
-    const spans = [];
-    findings.forEach((f) => {
-      if (f.severity === "weak") return;
-      if (typeof f.start === "number" && f.end > f.start) spans.push([f.start, f.end, f.severity, f.label]);
-      (f.spans || []).forEach((s) => { if (s.end > s.start) spans.push([s.start, s.end, f.severity, f.label]); });
-    });
-    spans.sort((a, b) => a[0] - b[0] || b[1] - a[1]);
+  function markTells(text) {
+    const hits = TellScan.scan(text, { wwb: methods.wwb }).findings.filter((f) => f.severity !== "weak" && typeof f.start === "number");
+    hits.sort((a, b) => a.start - b.start);
     let html = "";
     let pos = 0;
-    for (const [a, b, sev, label] of spans) {
-      if (a < pos) continue; // overlapping hits: the first one wins
-      html += esc(text.slice(pos, a)) + '<mark class="ws-hl ws-hl-' + sev + '" title="' + esc(label) + '">' + esc(text.slice(a, b)) + "</mark>";
-      pos = b;
+    for (const f of hits) {
+      if (f.start < pos) continue;
+      html += esc(text.slice(pos, f.start)) + '<mark class="wz-tell" title="' + esc(f.label) + '">' + esc(text.slice(f.start, f.end)) + "</mark>";
+      pos = f.end;
     }
     return html + esc(text.slice(pos));
   }
 
-  function renderOutput() {
+  function renderReview(recs) {
+    if (recs) recsShown = recs;
+    const d = W.diagnose(draftEl.value, parsed, methods);
+    const fillerIds = new Set(parsed.pieces.filter((p) => p.flags.filler).map((p) => p.id));
+
+    const voice = (text) => '<li class="wz-sent is-voice"><span class="wz-sent-n" aria-hidden="true"></span><span class="wz-sent-text">' +
+      esc(text).replace(/\n/g, "<br>") + '</span><span class="wz-sent-tag">Kept as you wrote it</span></li>';
+    let html = parsed.greeting ? voice(parsed.greeting) : "";
+    let last = 0;
+    for (const p of parsed.pieces) {
+      const n = p.sentence !== last ? p.sentence : "";
+      last = p.sentence;
+      const isPoint = p.id === d.pointId;
+      const isFiller = fillerIds.has(p.id);
+      const tag = isPoint ? (p.sentence > 1 ? "Your point. It moves to the top." : "Your point") : isFiller ? "Filler: " + p.flags.filler.toLowerCase() : "";
+      html += '<li class="wz-sent' + (isPoint ? " is-point" : isFiller ? " is-filler" : "") + '"><span class="wz-sent-n" aria-hidden="true">' + n + "</span>" +
+        '<span class="wz-sent-text">' + (isFiller ? esc(p.text) : markTells(p.text)) + "</span>" +
+        (tag ? '<span class="wz-sent-tag">' + esc(tag) + "</span>" : "") + "</li>";
+    }
+    if (parsed.signoff) html += voice(parsed.signoff);
+    sentencesEl.innerHTML = html;
+
+    flagsEl.innerHTML = d.flags.map((f) =>
+      '<li class="wz-flag is-' + f.kind + '"><span class="wz-flag-icon" aria-hidden="true"></span><div>' +
+      '<p class="wz-flag-title"><span class="sr-only">' + (f.kind === "good" ? "Good: " : "To fix: ") + "</span>" + esc(f.title) + "</p>" +
+      '<p class="wz-flag-detail">' + esc(f.detail) + "</p>" +
+      (f.quotes && f.quotes.length ? '<p class="wz-quotes ws-user">' + f.quotes.map((q) => "<q>" + esc(q) + "</q>").join(" ") + "</p>" : "") +
+      "</div></li>").join("");
+
+    const why = {};
+    recsShown.forEach((r) => { why[r.method] = r.why; });
+    if (recs) {
+      methodsEl.innerHTML = '<ul class="wz-picked" id="wz-picked"></ul>' +
+        '<details class="wz-change" id="wz-change"><summary>Change methods</summary><div class="wz-method-list">' +
+        W.METHODS.map((k) => '<label class="wz-method"><input type="checkbox" data-method="' + k + '"' + (methods[k] ? " checked" : "") + ">" +
+          '<span class="wz-method-body"><span class="wz-method-name">' + esc(W.METHOD_NAMES[k]) + "</span>" +
+          '<span class="wz-method-job">' + esc(W.METHOD_JOBS[k]) + "</span></span></label>").join("") + "</div></details>";
+    }
+    const picked = ["pyramid"].concat(W.METHODS.filter((k) => methods[k]));
+    $("wz-picked").innerHTML = picked.map((k) => '<li class="wz-pick-row"><span class="wz-pick-name">' + esc(W.METHOD_NAMES[k]) +
+      (k === "pyramid" ? ' <span class="wz-method-tag">Always on</span>'
+        : why[k] ? ' <span class="wz-method-tag is-picked">' + (recsShown.some((r) => r.method === k && r.example) ? "This example's method" : "Picked for you") + "</span>" : "") +
+      '</span><span class="wz-pick-why">' + esc(why[k] || W.METHOD_JOBS[k]) + "</span></li>").join("");
+  }
+
+  methodsEl.addEventListener("change", (e) => {
+    const k = e.target.dataset && e.target.dataset.method;
+    if (!k) return;
+    methods[k] = e.target.checked;
+    renderReview();
+    const again = methodsEl.querySelector('input[data-method="' + k + '"]');
+    if (again) again.focus();
+    reached = 1; // the rewrite has to be made again with the new methods
+    syncSteps("review");
+    say((methods[k] ? "Added " : "Removed ") + W.METHOD_NAMES[k] + ".");
+  });
+
+  $("wz-rewrite").addEventListener("click", () => {
+    const first = W.suggest(parsed, methods);
+    pointFrom = W.compare(draftEl.value, first, parsed).pointFrom;
+    const baked = W.bakeTrims(first);
+    state = baked.state;
+    rewriteCuts = baked.cuts;
+    seen = new Set();
+    skipped = new Set();
+    fixed = 0;
+    current = null;
+    reach("fix");
+    renderSlots();
+    go("fix");
+  });
+
+  // ---------------------------------------------------------------------
+  // Step 3: fix
+  // ---------------------------------------------------------------------
+
+  function cardTitle(c) {
+    const copy = W.slotCopy(state.methods);
+    if (c.field === "support") return (state.methods.inverted ? "Detail line " : "Supporting line ") + (c.index + 1);
+    if (c.field === "group-items") {
+      const g = state.groups[c.index];
+      return g && g.label.trim() ? "The " + g.label.trim() + " group" : "Group " + (c.index + 1);
+    }
+    if (c.field === "groups") return "Your groups";
+    if (c.field === "general") return "The whole message";
+    return (copy[c.field] && copy[c.field].label) || "This line";
+  }
+
+  function cardExample(c) {
+    const copy = W.slotCopy(state.methods);
+    return c.field === "groups" ? "" : (copy[c.field] && copy[c.field].example) || "";
+  }
+
+  function openTasks() {
+    return W.tasks(state, parsed).filter((c) => !skipped.has(c.key));
+  }
+
+  function renderPreview() {
     const built = W.assemble(state);
     const scanned = TellScan.scan(built.text, { wwb: state.methods.wwb });
-    preview.innerHTML = built.text
-      ? marked(built.text, scanned.findings)
-      : '<span class="ws-empty">Your rewrite shows up here as you fill the slots.</span>';
+    const spans = [];
+    scanned.findings.forEach((f) => {
+      if (f.severity !== "weak" && typeof f.start === "number" && f.end > f.start) spans.push([f.start, f.end, "ws-hl ws-hl-" + f.severity, f.label]);
+    });
+    const fp = flashPart && built.parts.find((p) => p.field === flashPart.field && p.index === flashPart.index);
+    if (fp) spans.push([fp.start, fp.end, "ws-new", "Just changed"]);
+    spans.sort((a, b) => a[0] - b[0] || b[1] - a[1]);
+    let html = "";
+    let pos = 0;
+    for (const [a, b, cls, label] of spans) {
+      if (a < pos) continue;
+      html += esc(built.text.slice(pos, a)) + '<mark class="' + cls + '" title="' + esc(label) + '">' + esc(built.text.slice(a, b)) + "</mark>";
+      pos = b;
+    }
+    html += esc(built.text.slice(pos));
+    preview.innerHTML = built.text ? html : '<span class="ws-empty">Your rewrite shows up here.</span>';
     preview.dataset.text = built.text;
+    flashPart = null;
 
-    const c = W.compare(draftEl.value, state, parsed);
-    const rows = [];
-    const nth = (n) => n + (n % 10 === 1 && n % 100 !== 11 ? "st" : n % 10 === 2 && n % 100 !== 12 ? "nd" : n % 10 === 3 && n % 100 !== 13 ? "rd" : "th");
-    if (c.pointFrom && c.pointFrom > 1) rows.push(["Point position", nth(c.pointFrom), "1st"]);
-    if (c.words[0]) rows.push(["Words", c.words[0], c.words[1]]);
-    if (c.words[0]) rows.push(["Tells", c.tells[0], c.tells[1]]);
-    if (c.ratio && c.ratio[0] !== null) rows.push(["Meaning ratio", c.ratio[0] + "%", (c.ratio[1] === null ? "–" : c.ratio[1] + "%")]);
-    scoreEl.innerHTML = rows.map(([k, a, b]) =>
-      "<div><dt>" + esc(k) + '</dt><dd><span class="ws-was">' + esc(String(a)) + '</span><span class="ws-arrow" aria-label="now"> → </span><span class="ws-now">' + esc(String(b)) + "</span></dd></div>").join("");
-    scoreEl.hidden = !rows.length;
-
-    if (built.cuts.length && state.trim) {
-      const seen = new Set();
-      const quotes = built.cuts.filter((x) => !seen.has(x.text.toLowerCase()) && seen.add(x.text.toLowerCase()))
+    if (rewriteCuts.length) {
+      const seenCut = new Set();
+      const quotes = rewriteCuts.filter((x) => !seenCut.has(x.text.toLowerCase()) && seenCut.add(x.text.toLowerCase()))
         .map((x) => '<q class="ws-user">' + esc(x.text) + "</q>");
-      cutsEl.innerHTML = "Trimmed " + (quotes.length === 1 ? "one stock phrase" : quotes.length + " stock phrases") + ": " + quotes.join(", ") + ".";
+      cutsEl.innerHTML = "Trimmed " + plural(quotes.length, "stock phrase", "stock phrases") + ": " + quotes.join(", ") + ".";
       cutsEl.hidden = false;
     } else {
       cutsEl.hidden = true;
       cutsEl.textContent = "";
     }
-    renderChecks(scanned);
   }
 
-  function renderChecks(scanned) {
-    const checks = W.check(state, parsed);
-    const order = ["pyramid", "scqa", "mece", "inverted", "wwb", "data", "audit"];
-    const rank = { warn: 0, info: 1, self: 2, pass: 3 };
-    const toFix = checks.filter((c) => c.status === "warn").length;
-    const passed = checks.filter((c) => c.status === "pass").length;
-    let html = '<p class="ws-checks-sum"><strong>' + (toFix ? toFix + " to fix" : "Nothing to fix") + "</strong>" +
-      (passed ? ", " + passed + " done" : "") + "</p>";
-    for (const method of order) {
-      const items = checks.filter((c) => c.method === method).sort((a, b) => rank[a.status] - rank[b.status]);
-      if (!items.length) continue;
-      html += '<div class="ws-check-group"><h4>' + esc(METHOD_NAMES[method]) + '</h4><ul class="ws-check-list">';
-      for (const c of items) {
-        html += '<li class="ws-check is-' + c.status + '" data-check="' + c.id + '">' +
-          '<span class="ws-check-icon" aria-hidden="true"></span><div class="ws-check-body">' +
-          '<p class="ws-check-title"><span class="sr-only">' + STATUS_TEXT[c.status] + ": </span>" + esc(c.title) + "</p>" +
-          (c.detail ? '<p class="ws-check-detail">' + esc(c.detail) + "</p>" : "") +
-          (c.quotes.length ? '<ul class="ws-quotes ws-user">' + c.quotes.map((q) => "<li><q>" + esc(q) + "</q></li>").join("") + "</ul>" : "");
-        if (c.id === "tells" && c.status === "warn") {
-          const hits = scanned.findings.filter((f) => f.severity !== "weak");
-          html += '<ul class="ws-tells ws-user">' + hits.map((f) =>
-            '<li class="sev-' + f.severity + '"><span class="code">' + esc(f.code) + "</span><span><strong>" + esc(f.label) + "</strong> " +
-            (f.match ? "<q>" + esc(f.match) + "</q> " : "") + esc(FIX_FOR_PAGE[f.code] || f.fix) + "</span></li>").join("") + "</ul>";
-        }
-        html += "</div></li>";
-      }
-      html += "</ul></div>";
-    }
-    checksEl.innerHTML = html;
+  function renderProgress(open) {
+    open.forEach((c) => seen.add(c.key));
+    const total = seen.size;
+    const done = total - open.length;
+    progressEl.setAttribute("aria-valuemax", String(Math.max(1, total)));
+    progressEl.setAttribute("aria-valuenow", String(total ? done : 1));
+    progressBar.style.width = (total ? Math.round((done / total) * 100) : 100) + "%";
+    progressText.textContent = total ? done + " of " + total + " fixes done" : "Nothing to fix";
+    progressEl.classList.toggle("is-complete", done === total);
   }
 
-  let timer = 0;
-  function update(now) {
-    clearTimeout(timer);
-    const run = () => { renderOutput(); syncChips(); };
-    if (now) run();
-    else timer = setTimeout(run, 90);
-  }
-
-  // ---------------------------------------------------------------------
-  // Actions
-  // ---------------------------------------------------------------------
-
-  function readMethods() {
-    const m = W.emptyState().methods;
-    methodInputs.forEach((i) => { m[i.dataset.method] = i.checked; });
-    return m;
-  }
-  function writeMethods(m) {
-    methodInputs.forEach((i) => { i.checked = !!m[i.dataset.method]; });
-  }
-
-  function fill(announce) {
-    if (W.wordCount(draftEl.value)) undoState = JSON.parse(JSON.stringify(state));
-    parsed = W.parseDraft(draftEl.value);
-    const trim = state.trim;
-    state = W.suggest(parsed, readMethods());
-    state.trim = trim;
-    active = { field: "point", index: 0 };
-    renderChips();
-    renderSlots();
-    renderDraftMeta();
-    update(true);
-    undoBtn.hidden = !undoState;
-    if (announce) say("Filled the slots from your draft. Check each one.");
-  }
-
-  function load(key, scroll, quiet) {
-    const ex = W.EXAMPLES[key];
-    if (!ex) return;
-    draftEl.value = ex.text;
-    grow(draftEl);
-    writeMethods(W.methodsFrom(ex.methods));
-    fill(false);
-    undoState = null;
-    undoBtn.hidden = true;
-    pressExample(key);
-    if (scroll) {
-      document.getElementById("workshop").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
-      draftEl.focus({ preventScroll: true });
-    }
-    if (!quiet) say("Loaded the " + ex.label.toLowerCase() + " example" + (ex.methods.length ? " with " + ex.methods.map((m) => METHOD_NAMES[m]).join(" and ") : "") + ".");
-  }
-
-  function addToTarget(text) {
-    const t = active;
-    if (t.field === "support") {
-      const cur = state.support[t.index] || "";
-      if (!cur.trim()) state.support[t.index] = text;
-      else { state.support.splice(t.index + 1, 0, text); active = { field: "support", index: t.index + 1 }; }
-      renderSlots();
-    } else if (t.field === "group-items") {
-      const g = state.groups[t.index];
-      g.items = g.items.trim() ? g.items.replace(/\s+$/, "") + "\n" + text : text;
-      const el = $("ws-gitems-" + t.index);
-      if (el) { el.value = g.items; grow(el); }
-    } else {
-      const cur = state[t.field] || "";
-      state[t.field] = cur.trim() ? cur.replace(/\s+$/, "") + " " + text : text;
-      const el = $("ws-" + t.field);
-      if (el) { el.value = state[t.field]; grow(el); }
-    }
-    update(true);
-    say("Added to " + labelFor(t) + ".");
-  }
-
-  // Draft typing: re-read the sentences; fill the slots the first time only.
-  let draftTimer = 0;
-  draftEl.addEventListener("input", () => {
-    grow(draftEl);
-    pressExample(null);
-    clearTimeout(draftTimer);
-    draftTimer = setTimeout(() => {
-      const empty = !W.wordCount(W.assemble(state).body);
-      parsed = W.parseDraft(draftEl.value);
-      if (empty) { fill(false); return; }
-      renderChips();
-      renderDraftMeta();
-      update(true);
-    }, 220);
-  });
-
-  fillBtn.addEventListener("click", () => fill(true));
-  undoBtn.addEventListener("click", () => {
-    if (!undoState) return;
-    state = undoState;
-    undoState = null;
-    undoBtn.hidden = true;
-    writeMethods(state.methods);
-    renderSlots();
-    update(true);
-    say("Put the slots back the way they were.");
-  });
-
-  methodInputs.forEach((input) => input.addEventListener("change", () => {
-    state = W.switchMethod(state, parsed, input.dataset.method, input.checked);
-    renderSlots();
-    renderDraftMeta();
-    update(true);
-    say((input.checked ? "Added " : "Removed ") + METHOD_NAMES[input.dataset.method] + ".");
-  }));
-
-  trimEl.addEventListener("change", () => { state.trim = trimEl.checked; update(true); });
-
-  root.querySelectorAll("[data-example]").forEach((b) => b.addEventListener("click", () => {
-    if (b.dataset.example === "clear") {
-      draftEl.value = "";
-      grow(draftEl);
-      writeMethods(W.emptyState().methods);
-      parsed = W.parseDraft("");
-      const trim = state.trim;
-      state = W.emptyState();
-      state.trim = trim;
-      undoState = null;
-      undoBtn.hidden = true;
-      renderChips();
-      renderSlots();
-      renderDraftMeta();
-      update(true);
-      pressExample(null);
-      draftEl.focus();
-      say("Cleared the workshop.");
+  function renderFix(note) {
+    renderPreview();
+    const open = openTasks();
+    renderProgress(open);
+    const card = open.find((c) => c.key === current) || open[0] || null;
+    current = card ? card.key : null;
+    if (!card) {
+      taskEl.innerHTML = '<div class="wz-clear"><span class="wz-done-badge is-small" aria-hidden="true">' + CHECK_SVG + "</span>" +
+        "<h4>" + (seen.size ? "All fixed. Nice work." : "Nothing to fix. It's in good shape.") + "</h4>" +
+        "<p>Read the rewrite once more, then take it to the finish.</p>" +
+        '<button type="button" class="btn btn-primary btn-big" data-action="finish">See it ready to send</button></div>';
+      delete taskEl.dataset.key;
+      delete taskEl.dataset.field;
       return;
     }
-    load(b.dataset.example, false);
-  }));
+    const n = open.indexOf(card) + 1;
+    const method = card.issues[0].method;
+    let body = '<p class="wz-task-count">Fix ' + n + " of " + open.length + (note ? ' <span class="wz-task-note">' + esc(note) + "</span>" : "") + "</p>";
+    body += '<div class="wz-task-head"><h4>' + esc(cardTitle(card)) + "</h4>" +
+      (method && method !== "audit" ? '<span class="slot-owner m-' + method + '">' + esc(W.METHOD_NAMES[method]) + "</span>" : "") + "</div>";
+    body += '<ul class="wz-issues">' + card.issues.map((i) =>
+      '<li><p class="wz-issue-title">' + esc(i.title) + (i.quotes && i.quotes.length ? ' <span class="ws-user">' + i.quotes.map((q) => "<q>" + esc(q) + "</q>").join(" ") + "</span>" : "") + "</p>" +
+      (i.detail ? '<p class="wz-issue-detail">' + esc(i.detail) + "</p>" : "") + "</li>").join("") + "</ul>";
 
-  // "Try it" buttons in the Methods section.
-  document.querySelectorAll("[data-try]").forEach((b) => b.addEventListener("click", () => load(b.dataset.try, true)));
+    if (card.field === "groups") {
+      body += groupsEditor("wz");
+    } else if (card.field !== "general") {
+      const ex = cardExample(card);
+      const empty = !String(card.value || "").trim();
+      body += '<label class="wz-input-label" for="wz-input">' + (empty ? "Write it here" : "Edit it here") + "</label>" +
+        '<textarea class="slot-input wz-input" id="wz-input" rows="3"' + (ex ? ' aria-describedby="wz-example"' : "") + "></textarea>";
+      if (ex) body += '<p class="wz-eg" id="wz-example">For example: ' + esc(ex.replace(/\n/g, " / ")) + "</p>";
+      if (empty) {
+        const used = W.usedPieces(state, parsed);
+        const picks = parsed.pieces.filter((p) => !p.flags.filler && !used.has(p.id)).slice(0, 4);
+        if (picks.length) {
+          body += '<p class="wz-small">Or start from one of your sentences:</p><ul class="wz-picks ws-user">' +
+            picks.map((p) => '<li><button type="button" class="wz-pick" data-pick="' + p.id + '">' + esc(p.text) + "</button></li>").join("") + "</ul>";
+        }
+      }
+    }
+    body += '<div class="wz-row">' + (card.field === "general"
+      ? '<button type="button" class="btn btn-primary" data-action="skip">Got it</button>'
+      : '<button type="button" class="btn btn-primary" data-action="apply">Apply fix</button><button type="button" class="btn btn-quiet" data-action="skip">Skip</button>') + "</div>";
+    taskEl.innerHTML = body;
+    taskEl.dataset.key = card.key;
+    taskEl.dataset.field = card.field;
+    taskEl.dataset.index = String(card.index);
 
-  chipsEl.addEventListener("click", (e) => {
-    const b = e.target.closest(".ws-chip");
+    const input = $("wz-input");
+    if (input) { input.value = card.value || ""; grow(input); }
+    if (card.field === "groups") fillGroupsEditor("wz");
+  }
+
+  function onScreen() {
+    return taskEl.dataset.field ? { key: taskEl.dataset.key, field: taskEl.dataset.field, index: Number(taskEl.dataset.index || 0) } : null;
+  }
+
+  function focusTask() {
+    const target = taskEl.querySelector("#wz-input, .wz-group-label, [data-action]");
+    if (target) target.focus();
+  }
+
+  function applyCard() {
+    const card = onScreen();
+    if (!card) { renderFix(); focusTask(); return; }
+    if (card.field === "groups") readGroupsEditor("wz");
+    else {
+      const input = $("wz-input");
+      if (input) W.setField(state, card.field, card.index, input.value);
+    }
+    flashPart = { field: card.field === "groups" ? "group-items" : card.field, index: card.index };
+    const still = W.tasks(state, parsed).find((c) => c.key === card.key);
+    renderSlots();
+    if (still) {
+      renderFix("Almost: " + plural(still.issues.length, "thing", "things") + " left on this one.");
+      say("Applied. " + plural(still.issues.length, "thing is", "things are") + " still flagged on this line.");
+      focusTask();
+    } else {
+      fixed += 1;
+      current = null;
+      renderFix();
+      const open = openTasks();
+      say("Fixed. " + (open.length ? plural(open.length, "fix", "fixes") + " to go." : "That was the last one."));
+      focusTask();
+    }
+  }
+
+  function skipCard() {
+    if (!current) return;
+    skipped.add(current);
+    current = null;
+    renderFix();
+    say("Skipped.");
+    focusTask();
+  }
+
+  function finish() {
+    reach("send");
+    go("send");
+  }
+
+  taskEl.addEventListener("click", (e) => {
+    const b = e.target.closest("button");
     if (!b) return;
-    const p = parsed.pieces.find((x) => x.id === b.dataset.piece);
-    if (p) addToTarget(p.text);
+    if (b.dataset.action === "apply") applyCard();
+    else if (b.dataset.action === "skip") skipCard();
+    else if (b.dataset.action === "finish") finish();
+    else if (b.dataset.pick) {
+      const p = parsed.pieces.find((x) => x.id === b.dataset.pick);
+      const input = $("wz-input");
+      if (p && input) {
+        input.value = input.value.trim() ? input.value.replace(/\s+$/, "") + " " + p.text : p.text;
+        grow(input);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.focus();
+      }
+    } else if (b.dataset.action === "add-group") {
+      readGroupsEditor("wz");
+      state.groups.push({ label: "", items: "", mode: "auto" });
+      renderFix();
+      const label = $("wz-glabel-" + (state.groups.length - 1));
+      if (label) label.focus();
+    } else if (b.dataset.action === "remove-group") {
+      readGroupsEditor("wz");
+      state.groups.splice(Number(b.dataset.index), 1);
+      if (!state.groups.length) state.groups = [{ label: "", items: "", mode: "auto" }];
+      renderFix();
+      focusTask();
+    }
   });
 
-  slotsEl.addEventListener("focusin", (e) => {
-    const f = e.target.dataset && e.target.dataset.field;
-    if (!f || f === "rule" || f === "group-mode") return;
-    active = { field: f === "group-label" ? "group-items" : f, index: Number(e.target.dataset.index || 0) };
-    targetEl.textContent = labelFor(active);
+  // Typing in a card updates the rewrite as you go; Apply moves on.
+  taskEl.addEventListener("input", (e) => {
+    const card = onScreen();
+    if (!card) return;
+    if (e.target.id === "wz-input") {
+      W.setField(state, card.field, card.index, e.target.value);
+      grow(e.target);
+    } else if (card.field === "groups") {
+      readGroupsEditor("wz");
+      if (e.target.tagName === "TEXTAREA") grow(e.target);
+    }
+    renderPreview();
   });
+  taskEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); applyCard(); }
+  });
+
+  // MECE's groups as a small editor, used in a fix card and in "Edit every part".
+  function groupsEditor(prefix) {
+    return '<label class="slot-sublabel" for="' + prefix + '-rule">Sorting rule</label>' +
+      '<input class="slot-input" id="' + prefix + '-rule" list="' + prefix + '-rules" placeholder="Example: By person">' +
+      '<datalist id="' + prefix + '-rules"><option value="By person"><option value="By time"><option value="Settled vs. still needed"><option value="By option"><option value="By cost"></datalist>' +
+      '<ol class="ws-groups">' + state.groups.map((g, i) => {
+        const n = i + 1;
+        return '<li class="ws-group"><div class="ws-group-head">' +
+          '<label class="sr-only" for="' + prefix + "-glabel-" + i + '">Group ' + n + " name</label>" +
+          '<input class="slot-input ws-group-label wz-group-label" id="' + prefix + "-glabel-" + i + '" placeholder="Group ' + n + ' name, like Ana or Settled">' +
+          '<button type="button" class="icon-btn" data-action="remove-group" data-index="' + i + '" aria-label="Remove group ' + n + '">' + CROSS_SVG + "</button></div>" +
+          '<label class="sr-only" for="' + prefix + "-gitems-" + i + '">Group ' + n + " items, one per line</label>" +
+          '<textarea class="slot-input" id="' + prefix + "-gitems-" + i + '" rows="3" placeholder="One item per line"></textarea></li>';
+      }).join("") + "</ol>" +
+      '<button type="button" class="btn btn-small" data-action="add-group">Add a group</button>';
+  }
+  function fillGroupsEditor(prefix) {
+    const rule = $(prefix + "-rule");
+    if (rule) rule.value = state.rule;
+    state.groups.forEach((g, i) => {
+      const l = $(prefix + "-glabel-" + i);
+      const t = $(prefix + "-gitems-" + i);
+      if (l) l.value = g.label;
+      if (t) { t.value = g.items; grow(t); }
+    });
+  }
+  function readGroupsEditor(prefix) {
+    const rule = $(prefix + "-rule");
+    if (rule) state.rule = rule.value;
+    state.groups.forEach((g, i) => {
+      const l = $(prefix + "-glabel-" + i);
+      const t = $(prefix + "-gitems-" + i);
+      if (l) g.label = l.value;
+      if (t) g.items = t.value;
+    });
+  }
+
+  // "Edit every part": every slot at once, for anyone who wants it.
+  function slotField(field, copy, rows) {
+    const id = "ws-" + field;
+    return '<div class="slot" data-slot="' + field + '"><div class="slot-head"><label class="slot-label" for="' + id + '">' + esc(copy.label) + "</label></div>" +
+      (copy.hint ? '<p class="slot-hint" id="' + id + '-hint">' + esc(copy.hint) + "</p>" : "") +
+      '<textarea class="slot-input" id="' + id + '" data-field="' + field + '" rows="' + (rows || 2) + '"' + (copy.hint ? ' aria-describedby="' + id + '-hint"' : "") +
+      ' placeholder="' + esc("Example: " + copy.example.replace(/\n/g, " / ")) + '"></textarea></div>';
+  }
+
+  function renderSlots() {
+    const m = state.methods;
+    const copy = W.slotCopy(m);
+    const focusId = document.activeElement && slotsEl.contains(document.activeElement) ? document.activeElement.id : null;
+    let html = slotField("greeting", copy.greeting, 1);
+    if (m.wwb) {
+      html += '<div class="slot"><label class="toggle"><input type="checkbox" id="ws-is-email"' + (state.isEmail ? " checked" : "") + "><span>This is an email</span></label>" +
+        (state.isEmail ? slotField("subject", copy.subject, 1) : "") + "</div>";
+    }
+    if (m.scqa && !m.inverted) {
+      const opts = [["asc", "Answer first", "busy readers"], ["sca", "Situation first", "needs grounding"], ["csa", "Problem first", "urgent"]];
+      html += '<fieldset class="slot slot-order"><legend class="slot-label">Opening order</legend><div class="ws-radios">' +
+        opts.map(([v, l, d]) => '<label class="ws-radio"><input type="radio" name="ws-order" id="ws-order-' + v + '" value="' + v + '"' +
+          (state.order === v ? " checked" : "") + "><span>" + l + " <small>" + d + "</small></span></label>").join("") + "</div></fieldset>";
+    }
+    html += slotField("point", copy.point, 2);
+    if (m.scqa) html += slotField("situation", copy.situation, 2) + slotField("complication", copy.complication, 2);
+    if (m.mece) {
+      html += '<div class="slot"><div class="slot-head"><span class="slot-label">' + esc(copy.groups.label) + '</span></div><p class="slot-hint">' + esc(copy.groups.hint) + "</p>" +
+        groupsEditor("ws") + "</div>";
+    } else {
+      const n = state.support.length;
+      html += '<div class="slot"><div class="slot-head"><span class="slot-label">' + esc(copy.support.label) + "</span></div>" +
+        '<p class="slot-hint">' + esc(copy.support.hint) + '</p><ol class="ws-items">' +
+        state.support.map((t, i) => '<li class="ws-item"><label class="sr-only" for="ws-support-' + i + '">' + esc(copy.support.label) + ", line " + (i + 1) + "</label>" +
+          '<textarea class="slot-input" id="ws-support-' + i + '" data-field="support" data-index="' + i + '" rows="2"></textarea>' +
+          '<span class="ws-item-tools">' +
+          '<button type="button" class="icon-btn" id="ws-up-' + i + '" data-action="up" data-index="' + i + '" aria-label="Move line ' + (i + 1) + ' up"' + (i === 0 ? " disabled" : "") + '><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6l-6 7h12z"/></svg></button>' +
+          '<button type="button" class="icon-btn" id="ws-down-' + i + '" data-action="down" data-index="' + i + '" aria-label="Move line ' + (i + 1) + ' down"' + (i === n - 1 ? " disabled" : "") + '><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 18l6-7H6z"/></svg></button>' +
+          '<button type="button" class="icon-btn" id="ws-remove-' + i + '" data-action="remove" data-index="' + i + '" aria-label="Remove line ' + (i + 1) + '">' + CROSS_SVG + "</button>" +
+          "</span></li>").join("") + '</ol><button type="button" class="btn btn-small" data-action="add-item">Add a line</button></div>';
+    }
+    if (m.inverted) html += slotField("background", copy.background, 2);
+    html += slotField("close", copy.close, 2);
+    html += slotField("signoff", copy.signoff, 2);
+    slotsEl.innerHTML = html;
+    slotsEl.querySelectorAll("[data-field]").forEach((el) => {
+      const f = el.dataset.field;
+      el.value = f === "support" ? state.support[Number(el.dataset.index)] || "" : state[f] || "";
+      grow(el);
+    });
+    if (m.mece) fillGroupsEditor("ws");
+    if (focusId && $(focusId)) $(focusId).focus();
+  }
 
   slotsEl.addEventListener("input", (e) => {
     const el = e.target;
-    const f = el.dataset.field;
-    if (!f || f === "group-mode") return;
-    const i = Number(el.dataset.index || 0);
-    if (f === "support") state.support[i] = el.value;
-    else if (f === "group-label") { state.groups[i].label = el.value; targetEl.textContent = labelFor(active); }
-    else if (f === "group-items") state.groups[i].items = el.value;
-    else state[f] = el.value;
+    if (el.dataset.field === "support") state.support[Number(el.dataset.index)] = el.value;
+    else if (el.dataset.field) state[el.dataset.field] = el.value;
+    else if (/^ws-(rule|glabel-|gitems-)/.test(el.id)) readGroupsEditor("ws");
     if (el.tagName === "TEXTAREA") grow(el);
-    update(false);
+    syncFromSlots();
   });
-
   slotsEl.addEventListener("change", (e) => {
     const el = e.target;
-    if (el.name === "ws-order") { state.order = el.value; renderSlots(); update(true); return; }
-    if (el.id === "ws-is-email") { state.isEmail = el.checked; renderSlots(); update(true); return; }
-    if (el.dataset.field === "group-mode") { state.groups[Number(el.dataset.index)].mode = el.value; update(true); }
+    if (el.name === "ws-order") { state.order = el.value; renderSlots(); syncFromSlots(); }
+    else if (el.id === "ws-is-email") { state.isEmail = el.checked; renderSlots(); syncFromSlots(); }
   });
-
   slotsEl.addEventListener("click", (e) => {
     const b = e.target.closest("button[data-action]");
     if (!b) return;
     const i = Number(b.dataset.index || 0);
     const act = b.dataset.action;
+    const n = state.support.length;
     let focusId = null;
-    if (act === "add-item") { state.support.push(""); focusId = "ws-support-" + (state.support.length - 1); }
+    if (act === "add-item") { state.support.push(""); focusId = "ws-support-" + n; }
     else if (act === "remove") { state.support.splice(i, 1); if (!state.support.length) state.support = [""]; focusId = "ws-support-" + Math.max(0, i - 1); }
-    else if (act === "up" && i > 0) { [state.support[i - 1], state.support[i]] = [state.support[i], state.support[i - 1]]; }
-    else if (act === "down" && i < state.support.length - 1) { [state.support[i + 1], state.support[i]] = [state.support[i], state.support[i + 1]]; }
-    else if (act === "add-group") { state.groups.push({ label: "", items: "", mode: "auto" }); focusId = "ws-glabel-" + (state.groups.length - 1); }
-    else if (act === "remove-group") { state.groups.splice(i, 1); if (!state.groups.length) state.groups = [{ label: "", items: "", mode: "auto" }]; focusId = "ws-glabel-0"; }
+    else if (act === "up" && i > 0) {
+      [state.support[i - 1], state.support[i]] = [state.support[i], state.support[i - 1]];
+      focusId = i - 1 > 0 ? "ws-up-" + (i - 1) : "ws-support-" + (i - 1);
+    } else if (act === "down" && i < n - 1) {
+      [state.support[i + 1], state.support[i]] = [state.support[i], state.support[i + 1]];
+      focusId = i + 1 < n - 1 ? "ws-down-" + (i + 1) : "ws-support-" + (i + 1);
+    } else if (act === "add-group") { readGroupsEditor("ws"); state.groups.push({ label: "", items: "", mode: "auto" }); focusId = "ws-glabel-" + (state.groups.length - 1); }
+    else if (act === "remove-group") { readGroupsEditor("ws"); state.groups.splice(i, 1); if (!state.groups.length) state.groups = [{ label: "", items: "", mode: "auto" }]; focusId = "ws-glabel-0"; }
     renderSlots();
-    update(true);
-    // Keep the keyboard where it was: on the moved line's button, or the new field.
-    if (act === "up" || act === "down") {
-      const j = act === "up" ? i - 1 : i + 1;
-      const again = slotsEl.querySelector('button[data-action="' + act + '"][data-index="' + j + '"]') ||
-        slotsEl.querySelector('#ws-support-' + j);
-      if (again) again.focus();
-      say("Moved the line " + act + ".");
-    } else if (focusId && $(focusId)) {
-      $(focusId).focus();
-    }
+    syncFromSlots();
+    if (focusId && $(focusId)) $(focusId).focus();
+    if (act === "up" || act === "down") say("Moved the line " + act + ".");
+  });
+
+  let slotTimer = 0;
+  function syncFromSlots() {
+    renderPreview();
+    clearTimeout(slotTimer);
+    // The fix card follows the slots, unless you're typing in it.
+    slotTimer = setTimeout(() => { if (!taskEl.contains(document.activeElement)) renderFix(); }, 250);
+  }
+
+  $("wz-finish").addEventListener("click", finish);
+
+  // ---------------------------------------------------------------------
+  // Step 4: send
+  // ---------------------------------------------------------------------
+
+  function renderSend() {
+    const built = W.assemble(state);
+    finalEl.value = built.text;
+    grow(finalEl);
+    noteFinal();
+    const c = W.compare(draftEl.value, state, parsed);
+    const from = c.pointFrom || pointFrom;
+    const wins = [];
+    if (from && c.pointTo && from > c.pointTo) wins.push("Moved your point from sentence " + from + " to sentence " + c.pointTo);
+    if (c.filler) wins.push("Cut " + plural(c.filler, "filler line", "filler lines"));
+    if (rewriteCuts.length) wins.push("Trimmed " + plural(rewriteCuts.length, "stock phrase", "stock phrases"));
+    if (fixed) wins.push("Made " + plural(fixed, "fix", "fixes") + " of your own");
+    if (c.tells[0] > c.tells[1]) wins.push("Tells down from " + c.tells[0] + " to " + c.tells[1]);
+    if (c.words[1] < c.words[0]) wins.push(c.words[0] + " words down to " + c.words[1] + ", " + Math.round(100 * (1 - c.words[1] / c.words[0])) + "% shorter");
+    if (c.ratio && c.ratio[0] !== null && c.ratio[1] !== null && c.ratio[1] > c.ratio[0]) wins.push("Meaning ratio up from " + c.ratio[0] + "% to " + c.ratio[1] + "%");
+    const used = ["Pyramid"].concat(W.METHODS.filter((k) => state.methods[k]).map((k) => W.METHOD_NAMES[k]));
+    wins.push("Shaped with " + used.join(" + "));
+    winsEl.innerHTML = wins.map((w) => '<li><span class="wz-win-icon" aria-hidden="true">' + CHECK_SVG + "</span><span>" + esc(w) + "</span></li>").join("");
+
+    const asks = W.check(state, parsed).filter((x) => x.status === "self");
+    asks.push({ title: "Read it aloud once", detail: "Change anything you wouldn't say to this person." });
+    asksEl.innerHTML = asks.map((a, i) => '<li><label class="wz-ask" for="wz-ask-' + i + '"><input type="checkbox" id="wz-ask-' + i + '"><span><strong>' +
+      esc(a.title) + "</strong> " + esc(a.detail) + "</span></label></li>").join("");
+    allSet.hidden = true;
+  }
+
+  function noteFinal() {
+    const r = TellScan.scan(finalEl.value, { wwb: state.methods.wwb });
+    const hits = r.findings.filter((f) => f.severity !== "weak");
+    finalNote.innerHTML = hits.length
+      ? plural(hits.length, "phrase still reads", "phrases still read") + " as padded: " + hits.slice(0, 3).map((f) => '<q class="ws-user">' + esc(f.match || f.label) + "</q>").join(", ") + ". You can edit it right here."
+      : "No tells found. You can still edit it right here.";
+  }
+  let finalTimer = 0;
+  finalEl.addEventListener("input", () => { grow(finalEl); clearTimeout(finalTimer); finalTimer = setTimeout(noteFinal, 200); });
+
+  asksEl.addEventListener("change", () => {
+    const done = Array.from(asksEl.querySelectorAll("input")).every((b) => b.checked);
+    if (done && allSet.hidden) say("All set. Go send it.");
+    allSet.hidden = !done;
   });
 
   copyBtn.addEventListener("click", async () => {
-    const text = preview.dataset.text || "";
-    if (!text) { say("Nothing to copy yet."); return; }
+    const text = finalEl.value;
+    if (!text.trim()) { say("Nothing to copy yet."); return; }
     try {
       await navigator.clipboard.writeText(text);
     } catch (err) {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.setAttribute("readonly", "");
-      ta.style.position = "fixed";
-      ta.style.opacity = "0";
-      document.body.append(ta);
-      ta.select();
-      try { document.execCommand("copy"); } catch (e2) { /* the status below still tells them */ }
-      ta.remove();
+      finalEl.select();
+      try { document.execCommand("copy"); } catch (e2) { /* the status line still reports it */ }
     }
     copyBtn.textContent = "Copied";
-    setTimeout(() => { copyBtn.textContent = "Copy"; }, 1600);
-    say("Copied the rewrite.");
+    copyBtn.classList.add("is-copied");
+    setTimeout(() => { copyBtn.textContent = "Copy"; copyBtn.classList.remove("is-copied"); }, 1800);
+    say("Copied your message.");
   });
 
-  toScanner.addEventListener("click", () => {
+  $("ws-to-scanner").addEventListener("click", () => {
     const input = document.getElementById("scan-input");
     if (!input) return;
-    input.value = preview.dataset.text || "";
+    input.value = finalEl.value;
     input.dispatchEvent(new Event("input", { bubbles: true }));
     document.getElementById("scanner").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
     input.focus({ preventScroll: true });
-    say("Opened your rewrite in the scanner.");
+    say("Opened your message in the scanner.");
+  });
+
+  $("wz-again").addEventListener("click", () => {
+    draftEl.value = "";
+    grow(draftEl);
+    exampleMethods = null;
+    reached = 0;
+    go("paste");
+    draftEl.focus();
   });
 
   const scanToWorkshop = document.getElementById("scan-to-workshop");
@@ -567,17 +681,14 @@
     const input = document.getElementById("scan-input");
     draftEl.value = input ? input.value : "";
     grow(draftEl);
-    fill(false);
-    pressExample(null);
-    document.getElementById("workshop").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
-    draftEl.focus({ preventScroll: true });
-    say("Brought the scanner's text into the workshop.");
+    exampleMethods = null;
+    check({ scroll: true });
   });
 
   window.addEventListener("resize", () => {
-    grow(draftEl);
-    slotsEl.querySelectorAll("textarea").forEach(grow);
+    [draftEl, finalEl].forEach(grow);
+    root.querySelectorAll("textarea.slot-input").forEach(grow);
   });
 
-  load("pyramid", false, true);
+  go("paste", { focus: false });
 })();

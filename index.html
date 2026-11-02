@@ -119,70 +119,113 @@
     <div class="wrap">
       <header class="section-head">
         <p class="eyebrow">The workshop</p>
-        <h2 id="workshop-title">Rewrite a draft, <em>method by method</em></h2>
-        <p>Paste something you wrote and pick your methods. Each method becomes a few slots, taken from the skill's own method guides, and your sentences fill them. The rewrite updates as you work, with each method's checks beside it. There's no AI here: it sorts your words and coaches the edit, and nothing you type leaves this page.</p>
+        <h2 id="workshop-title">Make a draft clear <em>in four steps</em></h2>
+        <p>Paste something you wrote. The workshop flags what's holding it back and rewrites it with the skill's methods. Then it walks you through the last few fixes, one at a time. It runs in your browser with no AI, and nothing you type leaves this page.</p>
       </header>
       <noscript><p class="ws-noscript">The workshop needs JavaScript. Turn it on to paste a draft and rewrite it.</p></noscript>
 
-      <div class="ws" id="ws" hidden>
-        <div class="ws-build">
-          <section class="ws-step" aria-labelledby="ws-h-draft">
-            <h3 class="ws-step-title" id="ws-h-draft"><span class="ws-n" aria-hidden="true">1</span>Paste your draft</h3>
-            <div class="ws-examples" role="group" aria-labelledby="ws-ex-label">
-              <span class="controls-label" id="ws-ex-label">Examples</span>
-              <button type="button" class="chip" data-example="pyramid" aria-pressed="false">Deck repair</button>
-              <button type="button" class="chip" data-example="scqa" aria-pressed="false">Thanksgiving</button>
-              <button type="button" class="chip" data-example="mece" aria-pressed="false">Trip plan</button>
-              <button type="button" class="chip" data-example="inverted" aria-pressed="false">Moving news</button>
-              <button type="button" class="chip" data-example="wwb" aria-pressed="false">Double charge</button>
-              <button type="button" class="chip" data-example="data" aria-pressed="false">Phone plan</button>
-              <button type="button" class="chip chip-quiet" data-example="clear">Clear</button>
-            </div>
-            <label class="sr-only" for="ws-draft">Your draft</label>
-            <textarea id="ws-draft" class="ws-draft" rows="5" placeholder="Paste an email, a text or a note. The greeting and sign-off stay yours."></textarea>
-            <p class="ws-draft-meta" id="ws-draft-meta"></p>
-          </section>
+      <div class="wz" id="ws" hidden>
+        <ol class="wz-steps" aria-label="Workshop steps">
+          <li><button type="button" class="wz-step" data-go="paste"><span class="wz-step-n" aria-hidden="true">1</span><span class="wz-step-name">Paste</span></button></li>
+          <li><button type="button" class="wz-step" data-go="review"><span class="wz-step-n" aria-hidden="true">2</span><span class="wz-step-name">Review</span></button></li>
+          <li><button type="button" class="wz-step" data-go="fix"><span class="wz-step-n" aria-hidden="true">3</span><span class="wz-step-name">Fix</span></button></li>
+          <li><button type="button" class="wz-step" data-go="send"><span class="wz-step-n" aria-hidden="true">4</span><span class="wz-step-name">Send</span></button></li>
+        </ol>
 
-          <section class="ws-step" aria-labelledby="ws-h-methods">
-            <h3 class="ws-step-title" id="ws-h-methods"><span class="ws-n" aria-hidden="true">2</span>Pick your methods</h3>
-            <div class="ws-methods" role="group" aria-labelledby="ws-h-methods">
-              <label class="ws-method is-locked"><input type="checkbox" checked disabled><span class="ws-method-name">Pyramid</span><span class="ws-method-job">always on</span></label>
-              <label class="ws-method"><input type="checkbox" data-method="scqa"><span class="ws-method-name">SCQA</span><span class="ws-method-job">the opening</span></label>
-              <label class="ws-method"><input type="checkbox" data-method="mece"><span class="ws-method-name">MECE</span><span class="ws-method-job">the grouping</span></label>
-              <label class="ws-method"><input type="checkbox" data-method="inverted"><span class="ws-method-name">Inverted Pyramid</span><span class="ws-method-job">the order</span></label>
-              <label class="ws-method"><input type="checkbox" data-method="wwb"><span class="ws-method-name">Writing Without Bullshit</span><span class="ws-method-job">the edit</span></label>
-              <label class="ws-method"><input type="checkbox" data-method="data"><span class="ws-method-name">Storytelling with Data</span><span class="ws-method-job">the numbers</span></label>
-            </div>
-            <div class="ws-build-row">
-              <button type="button" class="btn btn-primary" id="ws-fill">Fill the slots from my draft</button>
-              <button type="button" class="btn btn-quiet" id="ws-undo" hidden>Undo</button>
-            </div>
-          </section>
-
-          <section class="ws-step" aria-labelledby="ws-h-shape">
-            <h3 class="ws-step-title" id="ws-h-shape"><span class="ws-n" aria-hidden="true">3</span>Shape it</h3>
-            <a class="ws-jump" href="#ws-h-result">Jump to your rewrite</a>
-            <div class="ws-tray">
-              <p class="ws-tray-hint" id="ws-tray-hint">Your sentences. Click one to add it to <strong id="ws-target">Your point</strong>, or click a slot first to choose where it goes. Struck-through lines read as filler.</p>
-              <ul class="ws-chips ws-user" id="ws-chips"></ul>
-            </div>
-            <div class="ws-slots" id="ws-slots"></div>
-          </section>
-        </div>
-
-        <aside class="ws-result" aria-labelledby="ws-h-result">
-          <h3 class="ws-step-title" id="ws-h-result"><span class="ws-n" aria-hidden="true">4</span>Your rewrite</h3>
-          <div class="ws-preview ws-user" id="ws-preview" role="region" aria-label="Your rewrite" tabindex="0"></div>
-          <div class="ws-actions">
-            <button type="button" class="btn btn-primary btn-small" id="ws-copy">Copy</button>
-            <button type="button" class="btn btn-quiet btn-small" id="ws-to-scanner">Open in the scanner</button>
-            <label class="toggle"><input type="checkbox" id="ws-trim" checked><span>Trim stock phrases</span></label>
+        <section class="wz-panel" data-stage="paste" aria-labelledby="wz-h-paste">
+          <h3 class="wz-title" id="wz-h-paste" tabindex="-1">Paste your draft</h3>
+          <p class="wz-lede">Any email or text you're about to send. Keep your greeting and sign-off; they stay yours.</p>
+          <label class="sr-only" for="ws-draft">Your draft</label>
+          <textarea id="ws-draft" class="wz-draft" rows="7" placeholder="Hi Mark, I hope you're doing well. Last week we talked about…"></textarea>
+          <div class="wz-row">
+            <button type="button" class="btn btn-primary btn-big" id="wz-check">Check my draft</button>
+            <p class="wz-hint" id="wz-paste-hint" aria-live="polite"></p>
           </div>
-          <p class="ws-cuts" id="ws-cuts" hidden></p>
-          <dl class="ws-score" id="ws-score"></dl>
-          <div class="ws-checks" id="ws-checks"></div>
-          <p class="sr-only" role="status" aria-live="polite" id="ws-status"></p>
-        </aside>
+          <div class="wz-examples" role="group" aria-labelledby="wz-ex-label">
+            <p class="wz-small" id="wz-ex-label">No draft handy? Try one:</p>
+            <button type="button" class="wz-example" data-example="pyramid"><span>Deck repair</span><small>Pyramid</small></button>
+            <button type="button" class="wz-example" data-example="scqa"><span>Thanksgiving</span><small>SCQA</small></button>
+            <button type="button" class="wz-example" data-example="mece"><span>Trip plan</span><small>MECE</small></button>
+            <button type="button" class="wz-example" data-example="inverted"><span>Moving news</span><small>Inverted Pyramid</small></button>
+            <button type="button" class="wz-example" data-example="wwb"><span>Double charge</span><small>Writing Without Bullshit</small></button>
+            <button type="button" class="wz-example" data-example="data"><span>Phone plan</span><small>Storytelling with Data</small></button>
+          </div>
+        </section>
+
+        <section class="wz-panel" data-stage="review" aria-labelledby="wz-h-review" hidden>
+          <h3 class="wz-title" id="wz-h-review" tabindex="-1">Here's what we found</h3>
+          <div class="wz-grid">
+            <div class="wz-card">
+              <p class="wz-card-label">Your draft, sentence by sentence</p>
+              <ol class="wz-sentences ws-user" id="wz-sentences"></ol>
+            </div>
+            <div class="wz-card">
+              <p class="wz-card-label">What to fix</p>
+              <ul class="wz-flags" id="wz-flags"></ul>
+              <p class="wz-card-label wz-gap">Methods for this draft</p>
+              <p class="wz-small">Pyramid is always on. We picked the rest from what your draft says, and you can change them.</p>
+              <div class="wz-methods" id="wz-methods"></div>
+            </div>
+          </div>
+          <div class="wz-nav">
+            <button type="button" class="btn btn-quiet" data-go="paste">Back</button>
+            <button type="button" class="btn btn-primary btn-big" id="wz-rewrite">Rewrite it</button>
+          </div>
+        </section>
+
+        <section class="wz-panel" data-stage="fix" aria-labelledby="wz-h-fix" hidden>
+          <h3 class="wz-title" id="wz-h-fix" tabindex="-1">Your rewrite is ready. Now make it yours.</h3>
+          <div class="wz-grid wz-grid-fix">
+            <div class="wz-card wz-rewrite">
+              <div class="wz-card-head">
+                <p class="wz-card-label">Your rewrite</p>
+                <p class="wz-progress-text" id="wz-progress-text"></p>
+              </div>
+              <div class="wz-progress" id="wz-progress" role="progressbar" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0" aria-labelledby="wz-progress-text"><span id="wz-progress-bar"></span></div>
+              <div class="ws-preview ws-user" id="ws-preview" role="region" aria-label="Your rewrite" tabindex="0"></div>
+              <p class="wz-small wz-cuts" id="ws-cuts" hidden></p>
+            </div>
+            <div class="wz-card wz-task" id="wz-task" aria-live="polite"></div>
+          </div>
+          <details class="wz-advanced" id="wz-advanced">
+            <summary>Edit every part</summary>
+            <div class="ws-slots" id="ws-slots"></div>
+          </details>
+          <div class="wz-nav">
+            <button type="button" class="btn btn-quiet" data-go="review">Back</button>
+            <button type="button" class="btn btn-primary btn-big" id="wz-finish">I'm done</button>
+          </div>
+        </section>
+
+        <section class="wz-panel" data-stage="send" aria-labelledby="wz-h-send" hidden>
+          <div class="wz-done-head">
+            <span class="wz-done-badge" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9.5 16.2L5.3 12l-1.4 1.4 5.6 5.6 11-11-1.4-1.4z"/></svg></span>
+            <h3 class="wz-title" id="wz-h-send" tabindex="-1">Ready to send</h3>
+          </div>
+          <div class="wz-grid">
+            <div class="wz-card">
+              <label class="wz-card-label" for="wz-final">Your message, ready to copy</label>
+              <textarea id="wz-final" class="wz-final" rows="8"></textarea>
+              <div class="wz-row">
+                <button type="button" class="btn btn-primary btn-big" id="ws-copy">Copy</button>
+                <button type="button" class="btn btn-quiet" id="ws-to-scanner">Open in the scanner</button>
+              </div>
+              <p class="wz-small" id="wz-final-note"></p>
+            </div>
+            <div class="wz-card">
+              <p class="wz-card-label">What you did</p>
+              <ul class="wz-wins" id="wz-wins"></ul>
+              <p class="wz-card-label wz-gap">Before you send, ask yourself</p>
+              <ul class="wz-asks" id="wz-asks"></ul>
+              <p class="wz-small wz-all-set" id="wz-all-set" hidden>All set. Go send it.</p>
+            </div>
+          </div>
+          <div class="wz-nav">
+            <button type="button" class="btn btn-quiet" data-go="fix">Back to the fixes</button>
+            <button type="button" class="btn btn-quiet" id="wz-again">Start a new draft</button>
+          </div>
+        </section>
+        <p class="sr-only" role="status" aria-live="polite" id="ws-status"></p>
       </div>
     </div>
   </section>

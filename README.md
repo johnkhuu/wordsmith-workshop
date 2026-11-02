@@ -2,9 +2,16 @@
 
 A one-page site for the Wordsmith Workshop Claude skill: a writing studio that drafts and audits personal writing, built on Minto's Pyramid Principle and checked for AI-writing tells.
 
-The page opens on a 30-second film and explains how the skill works in three steps. Then comes the workshop, where anyone can paste a draft, pick methods and shape the rewrite themselves. Each method also has a before, an after and the reasons for every change. The page includes a working copy of the skill's tell scanner, too, so anyone can see what it flags in a draft.
+The page opens on a 30-second film and explains how the skill works in three steps. Then comes the workshop, where anyone can turn a draft of their own into a clear message. Each method also has a before, an after and the reasons for every change. The page includes a working copy of the skill's tell scanner, too, so anyone can see what it flags in a draft.
 
-The workshop uses no AI. Each method from the skill's guides becomes a few slots (what to fill in), an order (how the slots assemble) and checks (the guide's own checklist). The first pass sorts the visitor's own sentences into the slots, sets aside stock openers and other filler, and leaves every slot editable. Checks a rule can decide run automatically, like whether the point comes first or every number has a comparison. The rest show as questions to ask yourself.
+The workshop runs in four steps, one screen at a time:
+
+1. **Paste** a draft, or pick one of six examples.
+2. **Review** what's holding it back: the draft sentence by sentence, with the buried point, the filler and the tells flagged in plain words. Methods are picked from the skill's own recommendation rules, and the visitor can change them.
+3. **Fix**: the rewrite appears at once, followed by one card per line that still needs a change, with a progress bar.
+4. **Send**: the finished message to copy, a list of what changed, and the method guides' "ask yourself" questions.
+
+It uses no AI. Each method from the skill's guides becomes slots, an order and that guide's own checklist. The first pass sorts the visitor's own sentences into the slots and sets filler aside. Checks a rule can decide run automatically, like whether the point comes first or every number has a comparison. The rest are questions for the writer.
 
 ## What's here
 

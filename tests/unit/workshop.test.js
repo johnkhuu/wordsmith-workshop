@@ -264,3 +264,154 @@ test("every slot's label and hint changes with the method that owns it", () => {
   assert.equal(W.slotCopy(W.methodsFrom(["data"])).point.label, "Big Idea");
   assert.match(W.slotCopy(W.methodsFrom(["data", "scqa"])).point.hint, /key number/);
 });
+
+// ---------------------------------------------------------------------------
+// The four steps: recommend, diagnose, tasks
+
+test("methods are recommended by the skill's own rules", () => {
+  const rec = (text) => W.recommend(W.parseDraft(text), text).map((r) => r.method);
+  assert.deepEqual(rec(W.EXAMPLES.inverted.text), ["inverted"]);
+  assert.deepEqual(rec(W.EXAMPLES.scqa.text), ["scqa"]);
+  assert.deepEqual(rec(W.EXAMPLES.data.text), ["data"]);
+  assert.deepEqual(rec(W.EXAMPLES.mece.text), ["mece", "wwb"]);
+  assert.deepEqual(rec(W.EXAMPLES.wwb.text), ["wwb"]);
+  assert.deepEqual(rec("Our November bill is $241, up from $96. Could you re-check it?"), ["data", "wwb"]);
+  assert.deepEqual(rec("Happy birthday, Gran. We love you."), [], "a card gets Minto alone");
+  for (const r of W.recommend(W.parseDraft(W.EXAMPLES.wwb.text), W.EXAMPLES.wwb.text)) assert.ok(r.why.length > 10);
+});
+
+test("the review flags a buried point, filler and tells, and says what's good", () => {
+  const ex = W.EXAMPLES.pyramid;
+  const parsed = W.parseDraft(ex.text);
+  const d = W.diagnose(ex.text, parsed, W.methodsFrom([]));
+  assert.deepEqual(d.flags.map((f) => f.id), ["buried", "filler", "vague", "tells", "voice"]);
+  assert.equal(d.flags[0].title, "Your point is in sentence 4 of 4");
+  assert.equal(parsed.pieces.find((p) => p.id === d.pointId).text, "Would it be possible to push it back?");
+  const clean = "Could you pick up Ava at 3 today? I'm stuck at work until 5.";
+  assert.deepEqual(W.diagnose(clean, W.parseDraft(clean), W.methodsFrom([])).flags.map((f) => f.id), ["clean"]);
+});
+
+test("the review adds each method's own flags", () => {
+  const mece = W.diagnose(W.EXAMPLES.mece.text, W.parseDraft(W.EXAMPLES.mece.text), W.methodsFrom(["mece"]));
+  assert.deepEqual(mece.flags.map((f) => f.id), ["no-point", "list", "repeat"]);
+  const scqa = W.diagnose(W.EXAMPLES.scqa.text, W.parseDraft(W.EXAMPLES.scqa.text), W.methodsFrom(["scqa"]));
+  assert.ok(scqa.flags.some((f) => f.id === "no-change"));
+  const data = W.diagnose(W.EXAMPLES.data.text, W.parseDraft(W.EXAMPLES.data.text), W.methodsFrom(["data"]));
+  assert.deepEqual(data.flags.find((f) => f.id === "vague-amount").quotes, ["a lot", "significant"]);
+});
+
+test("fix cards point at the exact line that needs the change", () => {
+  const { st, parsed } = firstPass("wwb");
+  const cards = W.tasks(st, parsed);
+  assert.deepEqual(cards.map((c) => c.key), ["point", "support:0"]);
+  assert.ok(cards[0].issues.some((i) => /vague word/.test(i.title)));
+  assert.deepEqual(cards[1].issues.map((i) => i.quotes[0]), ["been charged"]);
+  assert.equal(cards[1].value, st.support[0]);
+
+  const mece = firstPass("mece");
+  assert.deepEqual(W.tasks(mece.st, mece.parsed).map((c) => c.key), ["point", "groups"]);
+  assert.deepEqual(W.tasks(firstPass("inverted").st, firstPass("inverted").parsed), [], "nothing left to fix");
+});
+
+test("a fix clears its card", () => {
+  const { st, parsed } = firstPass("pyramid");
+  assert.deepEqual(W.tasks(st, parsed).map((c) => c.key), ["point"]);
+  W.setField(st, "point", 0, "Could we move the deck start from 11/14 to 11/21?");
+  assert.deepEqual(W.tasks(st, parsed), []);
+});
+
+test("the rewrite knows which slot every stretch of it came from", () => {
+  const { st } = firstPass("pyramid");
+  const built = W.assemble(st);
+  for (const p of built.parts) {
+    const slice = built.text.slice(p.start, p.end);
+    if (p.field === "point") assert.equal(slice, "Would it be possible to push it back?");
+    if (p.field === "greeting") assert.equal(slice, "Hi Mark,");
+  }
+  assert.equal(W.partAt(built, built.text.indexOf("in-laws")).field, "support");
+});
+
+test("writing the trims into the slots keeps the text you edit the same as the text you see", () => {
+  const { st } = firstPass("wwb");
+  const before = W.assemble(st).text;
+  const baked = W.bakeTrims(st);
+  assert.equal(baked.state.trim, false);
+  assert.equal(W.assemble(baked.state).text, before);
+  assert.equal(baked.state.point, "I would appreciate it if this could be looked into.");
+  assert.equal(baked.cuts.length, 4);
+});
+
+test("the finish line reports where the point moved", () => {
+  const { ex, st, parsed } = firstPass("pyramid");
+  const c = W.compare(ex.text, st, parsed);
+  assert.equal(c.pointFrom, 4);
+  assert.equal(c.pointTo, 1);
+  assert.equal(c.filler, 2);
+  const sca = W.compare(ex.text, Object.assign(W.switchMethod(st, parsed, "scqa", true), { order: "sca", situation: "We planned the 14th." }), parsed);
+  assert.equal(sca.pointTo, 3, "with the situation first, the point is third");
+});
+
+// ---------------------------------------------------------------------------
+// Regressions from the code review
+
+test("a greeting word never swallows the message", () => {
+  const a = W.parseDraft("Hey can you grab milk, we're out.");
+  assert.equal(a.greeting, "");
+  assert.deepEqual(a.pieces.map((p) => p.text), ["Hey can you grab milk, we're out."]);
+  assert.equal(W.parseDraft("Hey can you call me").greeting, "");
+  assert.equal(W.parseDraft("hi Mark, the gate code is 4471.").greeting, "hi Mark,", "a lowercase greeting is still a greeting");
+});
+
+test("trims only cut phrases that leave a whole sentence behind", () => {
+  const t = (s, wwb) => W.applyTrims(s, wwb).text;
+  assert.equal(t("I wanted to follow up on the dishwasher repair from last week."), "I wanted to follow up on the dishwasher repair from last week.");
+  assert.equal(t("I hope you're doing well and that the move went smoothly."), "I hope you're doing well and that the move went smoothly.");
+  assert.equal(t("Thank you very much for the flowers!", true), "Thank you very much for the flowers!");
+  assert.equal(t("We're going to a Super Bowl party.", true), "We're going to a Super Bowl party.");
+  assert.equal(t("It's not really a problem.", true), "It's not really a problem.");
+  assert.equal(t("It was a really good trip.", true), "It was a good trip.");
+  assert.equal(t("Thanks. In summary, we loved it."), "Thanks. We loved it.");
+});
+
+test("method toggles keep every line and every group name", () => {
+  const parsed = W.parseDraft(W.EXAMPLES.pyramid.text);
+  const on = W.switchMethod(W.suggest(parsed, W.methodsFrom([])), parsed, "scqa", true);
+  const off = W.switchMethod(on, parsed, "scqa", false);
+  assert.ok(W.assemble(off).text.includes("My in-laws are visiting that week"));
+
+  const st = state({ support: ["Towels.", "Sunscreen"] });
+  const mece = W.switchMethod(st, null, "mece", true);
+  assert.deepEqual(mece.groups[0].items.split("\n"), ["Towels", "Sunscreen"]);
+  mece.groups = [{ label: "Ana", items: "Book the cabin", mode: "auto" }];
+  assert.deepEqual(W.switchMethod(mece, null, "mece", false).support, ["Ana: book the cabin."]);
+});
+
+test("names and days keep their capitals in a joined list", () => {
+  const st = state({ point: "Plans.", rule: "By person", groups: [{ label: "Settled", items: "Dan drives\nMaya brings games\nSaturday dinner plans", mode: "sentence" }] }, ["mece"]);
+  assert.match(W.assemble(st).body, /Settled: Dan drives, Maya brings games, and Saturday dinner plans\./);
+});
+
+test("a number only counts as compared when there's a real comparison", () => {
+  const st = state({ point: "The repair costs $500 and I want to know if that's right." }, ["data"]);
+  assert.ok(W.check(st, null).some((c) => c.id === "data-compare" && c.status === "warn"));
+  const ok = state({ point: "The repair costs $500, up from the $350 quote." }, ["data"]);
+  assert.ok(W.check(ok, null).some((c) => c.id === "data-compare" && c.status === "pass"));
+});
+
+test("sign-offs, footers and lowercase texts are read the way people write them", () => {
+  assert.equal(W.parseDraft("Can you pick up Ava at 3 today?\n\nThanks!\n– Sam").signoff, "Thanks!\n– Sam");
+  const jen = W.parseDraft("Hey Tom, can you pick up Ava at 3 today? Thanks, Jen");
+  assert.deepEqual([jen.greeting, jen.signoff], ["Hey Tom,", "Thanks, Jen"]);
+  const flowers = W.parseDraft("Thanks for the flowers!");
+  assert.deepEqual([flowers.signoff, flowers.pieces.length], ["", 1]);
+  assert.deepEqual(W.parseDraft("Dinner is at 7.\n\nSent from my iPhone").pieces.map((p) => p.text), ["Dinner is at 7."]);
+  assert.deepEqual(W.parseDraft("can you grab milk? we're out. thanks").pieces.map((p) => p.text), ["Can you grab milk?", "We're out."]);
+  assert.deepEqual(W.splitSentences("The answer is no. We can't make it."), ["The answer is no.", "We can't make it."]);
+  assert.equal(W.assemble(state({ point: "See you at 6 😊" })).text, "See you at 6 😊");
+});
+
+test("the ask pattern stays fast on long runs of spaces", () => {
+  const t0 = Date.now();
+  W.describe("Can you?" + " ".repeat(30000) + "x");
+  assert.ok(Date.now() - t0 < 200, (Date.now() - t0) + "ms");
+});

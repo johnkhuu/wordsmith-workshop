@@ -6,6 +6,12 @@
  * and checks (the guide's own checklist, automated where a rule can decide
  * and left as a prompt where only a person can). There's no AI: the first
  * pass only sorts the visitor's own sentences, and every slot stays editable.
+ *
+ * The page walks through four steps, and each has a function here:
+ *   paste  -> parseDraft
+ *   review -> diagnose + recommend (the skill's own rules for picking methods)
+ *   fix    -> suggest (the first pass), assemble, tasks (one card per line to fix)
+ *   send   -> compare (what changed) and the "ask yourself" checks
  */
 (function (root) {
   "use strict";
@@ -15,6 +21,19 @@
     : root.TellScan;
 
   const METHODS = ["scqa", "mece", "inverted", "wwb", "data"];
+  const METHOD_NAMES = {
+    pyramid: "Pyramid", scqa: "SCQA", mece: "MECE", inverted: "Inverted Pyramid",
+    wwb: "Writing Without Bullshit", data: "Storytelling with Data", audit: "Tell audit",
+  };
+  // What each method does, in a line, for the method picker.
+  const METHOD_JOBS = {
+    pyramid: "Puts your point first, with the support under it.",
+    scqa: "Opens with the situation and what changed, then your answer.",
+    mece: "Sorts items into clean groups, with no overlaps.",
+    inverted: "Puts the news first and the backstory last.",
+    wwb: "Cuts padding, passive voice and vague words.",
+    data: "Gives every number a comparison that makes it mean something.",
+  };
 
   // The six examples are the "before" drafts from the Methods section, with
   // the method each one demonstrates.
@@ -69,14 +88,14 @@
   }
 
   function capFirst(s) {
-    return s.replace(/^(\W*)([a-z])/, (m, pre, c) => pre + c.toUpperCase());
+    return s.replace(/^([^A-Za-z0-9]*)([a-z])/, (m, pre, c) => pre + c.toUpperCase());
   }
 
   // Ends a sentence with a period unless it already has its own ending.
   function finish(s) {
     s = squash(s);
     if (!s) return "";
-    if (/[.!?…:]["'”’)\]]*$/.test(s)) return s;
+    if (/[.!?…:。]["'”’)\]]*$/.test(s) || /\p{Extended_Pictographic}️?$/u.test(s)) return s;
     return s.replace(/[,;]+$/, "") + ".";
   }
 
@@ -87,7 +106,7 @@
   // ---------------------------------------------------------------------
 
   const RX = {
-    ask: /\?\s*["'”’)]*\s*$|\b(could you|can you|would you|will you|please|i'?d like|i would like|we'?d like|we would like|could we|can we|would it be possible|let me know|i need you|we need you|i'?d appreciate|i would (?:really )?appreciate|would appreciate it)\b/i,
+    ask: /\?["'”’)]*\s*$|\b(could you|can you|would you|will you|please|i'?d like|i would like|we'?d like|we would like|could we|can we|would it be possible|let me know|i need you|we need you|i'?d appreciate|i would (?:really )?appreciate|would appreciate it)\b/i,
     news: /\b(?:we'?re|we are|i'?m|i am|we'?ve|i'?ve|we have|i have)\s+(?:(?!been\b)\w+\s+)?(?:moving|going|getting|having|starting|leaving|decided|signed|booked|engaged|expecting|retiring|staying|skipping|hosting|doing|selling|buying|cancel+ing)\b|\b(?:we'?ll|we will)\s+(?:do|be|have|host|stay|move|skip)\b|\bdecided\b|\bit'?s official\b/i,
     date: /\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b|\b\d{1,2}(?::\d{2})?\s?(?:am|pm)\b|\b\d{1,2}(?:st|nd|rd|th)\b|\b(?:jan(?:uary)?|feb(?:ruary)?|march|mar|apr(?:il)?|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b|\bMay\s+\d|\b(?:mon|tues|wednes|thurs|fri|satur|sun)day\b|\b(?:today|tomorrow|tonight|this weekend|next week|next month|this year|next year)\b/i,
     digit: /\d/,
@@ -102,8 +121,7 @@
   // Scanner codes that mark a whole sentence as packaging rather than content.
   const FILLER_CODES = new Set(["D6", "D6m", "D5", "D5m", "D7"]);
 
-  // Capitalized words that also appear mid-sentence are names. Used so that
-  // joining "Dan is driving" into a list keeps the capital D.
+  // Capitalized words that also appear mid-sentence are names.
   function namesIn(text) {
     const names = new Set(["I"]);
     const re = /(?<=[a-z0-9,;:'’)] )([A-Z][a-zA-Z'’-]+)/g;
@@ -112,28 +130,29 @@
     return names;
   }
 
-  // Words that open a sentence without being names.
-  const FUNCTION_WORDS = new Set(["the", "a", "an", "we", "our", "my", "it", "its", "this", "that", "these", "those",
+  // Words that can lose their capital when an item moves into a list. Anything
+  // else (a name, a day, a brand) keeps it: a wrong capital reads better than
+  // "dan" or "saturday".
+  const LOWERABLE = new Set(["the", "a", "an", "we", "our", "my", "it", "its", "this", "that", "these", "those",
     "there", "he", "she", "they", "their", "his", "her", "you", "your", "someone", "everyone", "anyone", "somebody",
     "everybody", "nobody", "all", "some", "both", "each", "one", "also", "and", "but", "so", "for", "to", "in", "on",
-    "at", "with", "from", "by", "if", "when", "then", "still", "please", "has", "have", "is", "are", "can", "could"]);
+    "at", "with", "from", "by", "if", "when", "then", "still", "please", "has", "have", "is", "are", "can", "could",
+    "ask", "book", "bring", "buy", "call", "check", "clean", "confirm", "cook", "drive", "email", "find", "fix", "get",
+    "grab", "help", "make", "order", "pack", "pay", "pick", "plan", "print", "reply", "schedule", "send", "set", "sign",
+    "take", "text", "food", "groceries", "snacks", "towels", "drinks", "dinner", "lunch", "breakfast", "gas", "tickets"]);
 
-  function lowerFirst(s, names) {
-    const m = /^([A-Z][a-zA-Z'’-]*)\s*(\S*)/.exec(s);
+  function lowerFirst(s, names, known) {
+    const m = /^([A-Z][a-zA-Z'’-]*)/.exec(s);
     if (!m) return s;
     const w = m[1];
-    const next = m[2] || "";
     if (names.has(w) || w === "I" || /^I['’]/.test(w) || /^[A-Z]{2,}/.test(w)) return s;
-    if (!FUNCTION_WORDS.has(w.toLowerCase())) {
-      // "Dan is driving", "Maya has games", "Dan's car": a name, so it keeps its capital.
-      if (/['’]s$/.test(w)) return s;
-      if (/^(?:is|are|was|were|will|has|have|had|can|could|should|would|said|says|and|&|or)$/i.test(next)) return s;
-    }
-    return w.charAt(0).toLowerCase() + s.slice(1);
+    const lower = w.toLowerCase();
+    if (LOWERABLE.has(lower) || (known && known.has(lower))) return lower + s.slice(w.length);
+    return s;
   }
 
   function describe(text) {
-    const t = text;
+    const t = squash(text);
     const scanned = TellScan.scan(t);
     const tell = scanned.findings.find((f) => f.severity !== "weak" && f.code !== "C5" && f.code !== "C5p") || null;
     const packaging = scanned.findings.find((f) => FILLER_CODES.has(f.code)) || null;
@@ -164,18 +183,23 @@
   // Reading a draft
   // ---------------------------------------------------------------------
 
-  const ABBR = /(?:^|[\s(])(?:mr|mrs|ms|dr|st|jr|sr|vs|etc|e\.g|i\.e|a\.m|p\.m|no|ave|apt|approx|inc|co|ltd|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\.$/i;
+  const ABBR = /(?:^|[\s(])(?:mr|mrs|ms|dr|st|jr|sr|vs|etc|e\.g|i\.e|a\.m|p\.m|ave|apt|approx|inc|co|ltd|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\.$/i;
 
-  function splitSentences(par) {
+  // In a text written all in lowercase, a sentence can start with a small letter.
+  function splitSentences(par, lowerStyle) {
     const out = [];
     let start = 0;
-    const re = /[.!?…]+["'”’)\]]*(?=\s|$)/g;
+    const re = /[.!?…。]+["'”’)\]]*(?=\s|$)|。/g;
     let m;
     while ((m = re.exec(par))) {
       const end = m.index + m[0].length;
-      if (m[0] === "." && ABBR.test(par.slice(Math.max(0, m.index - 8), m.index + 1))) continue;
       const rest = par.slice(end).replace(/^\s+/, "");
-      if (rest && !/^["'“‘(\[]?[A-Z0-9$#]/.test(rest)) continue;
+      if (m[0] === ".") {
+        if (ABBR.test(par.slice(Math.max(0, m.index - 8), m.index + 1))) continue;
+        if (/(?:^|\s)no$/i.test(par.slice(Math.max(0, m.index - 3), m.index)) && /^\d/.test(rest)) continue; // "No. 5"
+      }
+      const opensSentence = /^["'“‘(\[¿¡]?[A-Z0-9$#¿¡]/.test(rest) || (lowerStyle && /^[a-z]/.test(rest));
+      if (rest && !opensSentence) continue;
       const s = par.slice(start, end).trim();
       if (s) out.push(s);
       start = end;
@@ -214,19 +238,32 @@
     return [s];
   }
 
-  const LIST_MARK = /^\s*(?:[-*•●▪–]|\d+[.)])\s+/;
-  const GREETING_LINE = /^(?:hi|hey|hello|dear|hiya|greetings|good (?:morning|afternoon|evening))\b[^.!?\n]{0,40}[,!:]?\s*$/i;
-  const GREETING_LEAD = /^((?:hi|hey|hello|dear|hiya)\b(?:\s+(?:and|&|all|everyone|guys|team|folks|y'all|there|[A-Z][\w'’.-]*)){0,4}\s*[,!:])\s*/i;
-  const CLOSER = /^(?:thanks|thank you|thanks again|thanks so much|many thanks|best|best regards|kind regards|warm regards|regards|cheers|sincerely|warmly|love|talk soon|see you soon|xo+|take care)\b[^.?\n]{0,20}[,.!]?\s*$/i;
-  const NAME_LINE = /^[A-Z][\w'’.-]*(?: [A-Z][\w'’.-]*){0,2}$/;
+  const LIST_MARK = /^\s*(?:[-*•●▪–—]|\d+[.)])\s+/;
+  const GREET = "(?:[Hh]i|[Hh]ey|[Hh]ello|[Dd]ear|[Hh]iya|[Gg]reetings|[Gg]ood (?:morning|afternoon|evening))";
+  const GREET_NAME = "(?:\\s+(?:and|&|all|everyone|guys|team|folks|y'all|there|[A-Z][\\w'’.-]*))";
+  // A line that is only a greeting: "Hi Mark," or "Hey all!"
+  const GREETING_LINE = new RegExp("^" + GREET + GREET_NAME + "{0,4}\\s*[,!:.]?\\s*$");
+  // A greeting at the start of a line: "Hi Mark, I hope ..."
+  const GREETING_LEAD = new RegExp("^(" + GREET + GREET_NAME + "{0,4}\\s*[,!:])\\s*");
+  const CLOSER_HEAD = /^(thanks so much|thanks again|thanks|thank you so much|thank you|many thanks|best regards|kind regards|warm regards|best|regards|cheers|sincerely|warmly|love|talk soon|see you soon|xo+|take care)\b(.*)$/i;
+  const NAME_LINE = /^(?:[-–—]\s*)?[A-Z][\w'’.-]*(?: [A-Z][\w'’.-]*){0,2}$/;
+  const MAIL_FOOTER = /^(?:sent from my \w+|get outlook for \w+)/i;
+
+  // "Thanks", "Thanks so much!", "Best, Sam" are closers; "Thanks for the flowers!" is a sentence.
+  function isCloser(line) {
+    const m = CLOSER_HEAD.exec(String(line || "").trim());
+    if (!m) return false;
+    const rest = m[2].trim();
+    return rest === "" || /^[,.!]*\s*(?:[-–—]\s*)?(?:[A-Z][\w'’.-]*(?: [A-Z][\w'’.-]*)?)?[,.!]*$/.test(rest);
+  }
 
   function parseDraft(text) {
-    let src = String(text || "").replace(/\r\n?/g, "\n").trim();
+    const src = String(text || "").replace(/\r\n?/g, "\n").trim();
     const out = { subject: "", greeting: "", signoff: "", pieces: [], sentences: 0 };
     if (!src) return out;
 
-    let lines = src.split("\n");
-    const sub = /^\s*subject:\s*(.+)$/i.exec(lines[0]);
+    let lines = src.split("\n").filter((l) => !MAIL_FOOTER.test(l.trim()));
+    const sub = /^\s*subject:\s*(.+)$/i.exec(lines[0] || "");
     if (sub) { out.subject = sub[1].trim(); lines = lines.slice(1); }
     while (lines.length && !lines[0].trim()) lines.shift();
 
@@ -237,27 +274,29 @@
         lines = lines.slice(1);
       } else {
         const m = GREETING_LEAD.exec(first);
-        if (m && wordCount(m[1]) <= 5) {
+        if (m && wordCount(m[1]) <= 5 && first.length > m[0].length) {
           out.greeting = m[1].trim();
           lines[0] = first.slice(m[0].length);
         }
       }
     }
 
-    // Sign-off: "Best,\nSam", or a closer line on its own.
+    // Sign-off: "Best,\nSam", "Thanks!\n– Sam", or a closer line on its own.
     while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
     const last = (lines[lines.length - 1] || "").trim();
     const prev = (lines[lines.length - 2] || "").trim();
-    if (lines.length >= 2 && NAME_LINE.test(last) && CLOSER.test(prev)) {
+    const hasBody = (k) => lines.slice(0, lines.length - k).some((l) => l.trim());
+    if (lines.length >= 2 && NAME_LINE.test(last) && isCloser(prev) && hasBody(2)) {
       out.signoff = prev + "\n" + last;
       lines = lines.slice(0, -2);
-    } else if (CLOSER.test(last)) {
+    } else if (isCloser(last) && hasBody(1)) {
       out.signoff = last;
       lines = lines.slice(0, -1);
     }
 
     // Paragraphs, then sentences. List items stay one per line.
     const paras = lines.join("\n").split(/\n\s*\n/);
+    const lowerStyle = !/[.!?]\s+[A-Z]/.test(lines.join(" ")) && /[.!?]\s+[a-z]/.test(lines.join(" "));
     let sentenceNo = 0;
     paras.forEach((para, p) => {
       const chunks = [];
@@ -272,20 +311,22 @@
       }
       if (buf.length) chunks.push(buf.join(" "));
       for (const chunk of chunks) {
-        for (const sentence of splitSentences(chunk)) {
+        for (const sentence of splitSentences(chunk, lowerStyle)) {
           sentenceNo += 1;
           for (const part of splitClauses(sentence)) {
-            out.pieces.push({ id: "s" + out.pieces.length, text: sentenceCase(part), para: p, sentence: sentenceNo });
+            out.pieces.push({ id: "s" + out.pieces.length, raw: part.trim(), text: sentenceCase(part), para: p, sentence: sentenceNo });
           }
         }
       }
     });
 
-    // A closing "Thanks!" at the end of the last paragraph is a sign-off.
+    // A closing "Thanks!" or "Thanks, Jen" at the end of the last paragraph is
+    // a sign-off, kept exactly as written. Not when it's the whole message.
     const tail = out.pieces[out.pieces.length - 1];
-    if (!out.signoff && tail && CLOSER.test(tail.text) && wordCount(tail.text) <= 4) {
-      out.signoff = tail.text;
+    if (!out.signoff && tail && out.pieces.length > 1 && isCloser(tail.raw) && wordCount(tail.raw) <= 4) {
+      out.signoff = tail.raw;
       out.pieces.pop();
+      sentenceNo = out.pieces.length ? out.pieces[out.pieces.length - 1].sentence : 0;
     }
 
     out.sentences = sentenceNo;
@@ -324,6 +365,32 @@
   }
 
   // ---------------------------------------------------------------------
+  // Picking methods: section 3 of references/methods.md, as rules
+  // ---------------------------------------------------------------------
+
+  const COMPANY = /\b(refunds?|invoices?|charged?|charges|bills?|billed|billing|accounts?|orders?|deposit|landlord|contractor|school|office|support|customer|insurance|claim|appointment|warranty|subscription|unfortunately|complain\w*|cancel\w*)\b/i;
+  const DECISION = /\b(decided|decision|chose|chosen|we'?re going with|instead of|no longer|we'?ll do)\b/i;
+  const NEWS_WORDS = /\b(we'?re moving|i'?m moving|moving to|moving out|engaged|expecting|new job|retiring|postponed|rescheduled|moved to|new date|cancel+ed|announce\w*|it'?s official|signed a lease)\b/i;
+  const MONEY_TALK = /\b(cheaper|pricier|expensive|save|saves|saving|savings|cost|costs|price|budget|bill|pay|paying|spend)\b/i;
+
+  function recommend(parsed, text) {
+    const src = String(text || "");
+    const recs = [];
+    if (!wordCount(src) || !parsed || !parsed.pieces.length) return recs;
+    const add = (method, why) => { if (!recs.some((r) => r.method === method)) recs.push({ method, why }); };
+    const amounts = src.match(new RegExp(MONEY_OR_AMOUNT.source, "gi")) || [];
+    if (NEWS_WORDS.test(src)) add("inverted", "It's news or a change of plan, so the news goes first.");
+    if (amounts.length) add("data", "It has figures the reader needs to weigh.");
+    else if (MONEY_TALK.test(src) && VAGUE_AMOUNT.test(src)) add("data", "It talks about money without the numbers.");
+    const items = parsed.pieces.reduce((k, p) => k + Math.max(1, listItems(p.text).length), 0);
+    const needs = parsed.pieces.reduce((k, p) => k + listItems(p.text).filter((t) => RX.need.test(t)).length, 0);
+    if (needs >= 3 || items - parsed.pieces.length >= 2) add("mece", "It has several items or asks to sort.");
+    if (DECISION.test(src) && !recs.some((r) => r.method === "inverted")) add("scqa", "It explains a decision that needs some context first.");
+    if (COMPANY.test(src) || parsed.pieces.some((p) => p.flags.ask)) add("wwb", "It asks something of a busy reader.");
+    return recs.slice(0, 2);
+  }
+
+  // ---------------------------------------------------------------------
   // The first pass: sort the draft's own sentences into the slots
   // ---------------------------------------------------------------------
 
@@ -348,8 +415,18 @@
     const parts = String(text).split(/,\s+(?:and\s+)?(?=(?:also\s+)?(?:i|we|you|he|she|they|someone|anyone|has|have|the|a|an|our|my|your|[A-Z][a-z]+)\b)|;\s+/);
     return parts
       .map((p) => p.trim().replace(/^(?:and|also|plus)\s+/i, "").replace(/[.;,]+$/, ""))
-      .filter((p) => wordCount(p) >= 2)
+      .filter((p) => wordCount(p) >= 1)
       .map((p) => capFirst(p));
+  }
+
+  function pickPoint(parsed, methods) {
+    let best = null;
+    let bestScore = -Infinity;
+    parsed.pieces.forEach((p, i) => {
+      const sc = scorePoint(p, methods, i, parsed.pieces.length);
+      if (sc > bestScore) { best = p; bestScore = sc; }
+    });
+    return { piece: best, score: bestScore };
   }
 
   function suggest(parsed, methods) {
@@ -364,15 +441,9 @@
     const pieces = parsed.pieces;
     const live = pieces.filter((p) => !p.flags.filler);
 
-    // The point.
-    let best = null;
-    let bestScore = -Infinity;
-    pieces.forEach((p, i) => {
-      const sc = scorePoint(p, methods, i, pieces.length);
-      if (sc > bestScore) { best = p; bestScore = sc; }
-    });
+    const { piece: best, score: bestScore } = pickPoint(parsed, methods);
     const weakPoint = !best || bestScore < 1;
-    if (best && !(methods.mece && weakPoint)) {
+    if (best && bestScore > -Infinity && !(methods.mece && weakPoint)) {
       st.point = best.text;
       used.add(best.id);
     }
@@ -413,8 +484,10 @@
     if (methods.mece) {
       const items = [];
       rest.forEach((p) => { listItems(p.text).forEach((t) => items.push(t)); used.add(p.id); });
-      if (best && !st.point && !items.length) items.push(...listItems(best.text));
-      if (best && !st.point) { listItems(best.text).forEach((t) => { if (!items.includes(t)) items.unshift(t); }); used.add(best.id); }
+      if (best && !st.point && !best.flags.filler) {
+        listItems(best.text).forEach((t) => { if (!items.includes(t)) items.unshift(t); });
+        used.add(best.id);
+      }
       const needs = items.filter((t) => RX.need.test(t));
       if (needs.length && needs.length < items.length && needs.length / items.length < 0.7) {
         st.rule = "Settled vs. still needed";
@@ -434,38 +507,61 @@
     return st;
   }
 
-  // Switching methods on or off after the first pass: move content between
-  // slots instead of losing it, and fill newly shown slots from unused pieces.
+  // Switching methods: move content between slots instead of losing it, and
+  // fill newly shown slots from unused pieces of the draft.
   function switchMethod(state, parsed, key, on) {
     const st = JSON.parse(JSON.stringify(state));
     st.methods[key] = on;
     const inUse = usedPieces(st, parsed);
     const free = (parsed ? parsed.pieces : []).filter((p) => !inUse.has(p.id) && !p.flags.filler);
+    const lines = st.support.filter((s) => s.trim());
     if (key === "mece") {
       if (on) {
-        const items = st.support.filter((s) => s.trim()).flatMap(listItems);
+        const items = lines.flatMap(listItems);
         st.groups = [{ label: "", items: items.join("\n"), mode: "auto" }];
         st.support = [""];
       } else {
-        const items = st.groups.flatMap((g) => g.items.split("\n")).map((s) => s.trim()).filter(Boolean).map(finish);
-        st.support = items.length ? items : [""];
+        const names = namesIn(st.groups.map((g) => g.items).join("\n"));
+        const back = [];
+        for (const g of st.groups) {
+          const items = groupItems(g);
+          if (!items.length) continue;
+          const label = squash(g.label).replace(/[:.\s]+$/, "");
+          if (label) back.push(finish(label + ": " + lowerFirst(joinItems(items, names), names)));
+          else items.forEach((t) => back.push(finish(t)));
+        }
+        st.support = back.length ? back : [""];
         st.groups = [{ label: "", items: "", mode: "auto" }];
-        st.rule = "";
       }
     }
-    if (key === "scqa" && on) {
-      if (!st.complication.trim()) {
-        const c = free.find((p) => p.flags.complication) ||
-          st.support.map((t) => ({ text: t, flags: describe(t) })).find((p) => p.text.trim() && p.flags.complication);
-        if (c) { st.complication = c.text; st.support = dropText(st.support, c.text); }
-      }
-      if (!st.situation.trim()) {
-        const s = free.find((p) => p.flags.situation && p.text !== st.complication);
-        if (s) { st.situation = s.text; st.support = dropText(st.support, s.text); }
+    if (key === "scqa") {
+      if (on) {
+        if (!st.complication.trim()) {
+          const c = free.find((p) => p.flags.complication) ||
+            lines.map((t) => ({ text: t, flags: describe(t) })).find((p) => p.flags.complication);
+          if (c) { st.complication = c.text; st.support = dropText(st.support, c.text); }
+        }
+        if (!st.situation.trim()) {
+          const s = free.find((p) => p.flags.situation && p.text !== st.complication);
+          if (s) { st.situation = s.text; st.support = dropText(st.support, s.text); }
+        }
+      } else {
+        const moved = [st.situation, st.complication].map(squash).filter(Boolean);
+        if (moved.length) {
+          if (st.methods.mece) {
+            const g = st.groups[0];
+            g.items = moved.concat(groupItems(g)).join("\n");
+          } else {
+            st.support = moved.concat(lines);
+          }
+        }
+        st.situation = "";
+        st.complication = "";
       }
     }
     if (key === "inverted" && !on && st.background.trim()) {
-      st.support = st.support.filter((s) => s.trim()).concat([st.background.trim()]);
+      if (st.methods.mece) st.groups[st.groups.length - 1].items += "\n" + st.background.trim();
+      else st.support = st.support.filter((s) => s.trim()).concat([st.background.trim()]);
       st.background = "";
     }
     if (key === "wwb" && on && !st.isEmail && st.subject) st.isEmail = true;
@@ -477,7 +573,7 @@
     return out.length ? out : [""];
   }
 
-  // Which draft pieces a slot already holds (by text), so chips can show it.
+  // Which draft pieces a slot already holds (by text).
   function slotTexts(st) {
     const parts = [st.point, st.close, st.greeting, st.signoff, st.subject];
     if (st.methods.scqa) parts.push(st.situation, st.complication);
@@ -506,38 +602,46 @@
   // Assembling the rewrite
   // ---------------------------------------------------------------------
 
-  // Mechanical cuts a careful editor makes on sight. The stock openers and
-  // recaps go in every rewrite; the Writing Without Bullshit edit adds the
-  // intensifiers and hedges. Each cut is listed so nothing vanishes silently.
+  // Mechanical cuts a careful editor makes on sight. Each one takes out a
+  // whole phrase that leaves a complete sentence behind; anything riskier is
+  // left in place for a fix card to point at. Every cut is listed.
   const TRIMS = [
-    { re: /\bI (?:just )?wanted to (?:reach out|touch base|follow up)(?: (?:to let you know|to say|to ask|to tell you))?(?: that)?,?\s*/gi, why: "stock opener" },
-    { re: /\bI hope (?:this (?:message|email|note) finds you well|you(?:'re|’re| are) (?:doing )?well|all is well)[.!]?\s*/gi, why: "stock opener" },
-    { re: /\b(?:In (?:summary|conclusion|sum|short)|To sum up|All in all|Overall|Ultimately|At the end of the day),\s*/g, why: "recap opener" },
+    { re: /\bI (?:just )?wanted to (?:reach out|touch base|follow up)(?: and| to)? (?:let you know|say|ask|tell you)(?: that)?,?\s*/gi, why: "stock opener" },
+    { re: /\bI hope (?:this (?:message|email|note) finds you well|you(?:'re|’re| are) (?:doing )?well|all is well)(?:[.!]+\s*|\s*$)/gi, why: "stock opener" },
+    { re: /(^|[.!?]\s+)(?:In (?:summary|conclusion|sum|short)|To sum up|All in all|Overall|Ultimately|At the end of the day),\s*/g, keep: 1, why: "recap opener" },
     { re: /,?\s*at your earliest convenience/gi, why: "stock phrase" },
-    { re: /(?:Please )?(?:don't|don’t|do not) hesitate to (?:reach out|contact (?:me|us)|ask)(?: if [^.!?]*)?[.!]?\s*/gi, why: "chatbot residue" },
-    { re: /\b(?:very|really|truly|incredibly|extremely|totally|absolutely|deeply|super) (?=[a-z])/gi, why: "intensifier", wwb: true },
+    { re: /(^|[.!?]\s+)(?:Please )?(?:don't|don’t|do not) hesitate to (?:reach out|contact (?:me|us)|ask)(?: if [^.!?]*)?[.!]?\s*/gi, keep: 1, why: "chatbot residue" },
+    { re: /(?<!\bnot|n't|n’t)\s(?:very|really|truly|incredibly|extremely|totally|deeply|super) (?=[a-z])(?!(?:much|many|well|first|last|same|own|end|least|best|top|little|few)\b)/g, to: " ", why: "intensifier", wwb: true },
+    { re: /^(?:Very|Really|Truly|Incredibly|Extremely|Totally|Deeply) (?=[a-z])(?!(?:much|many|well|first|last|same|own|end|least|best|top|little|few)\b)/g, why: "intensifier", wwb: true },
     { re: /\b(could|may|might|would) possibly\b/gi, to: "$1", why: "hedge", wwb: true },
     { re: /\bjust (?=(?:a quick|wanted|to let|checking))/gi, why: "filler", wwb: true },
   ];
+  const MARK = "\u0001";
 
   function applyTrims(text, wwb) {
     const cut = [];
-    let s = text;
+    let s = String(text);
     for (const t of TRIMS) {
       if (t.wwb && !wwb) continue;
-      s = s.replace(t.re, (m, g1) => {
-        cut.push({ text: m.trim().replace(/[,.!]+$/, ""), why: t.why });
-        return t.to ? t.to.replace("$1", g1) : "";
+      s = s.replace(t.re, function (m) {
+        const groups = Array.prototype.slice.call(arguments, 1, -2);
+        const lead = t.keep ? groups[t.keep - 1] || "" : "";
+        cut.push({ text: m.slice(lead.length).trim().replace(/[,.!]+$/, ""), why: t.why });
+        if (t.to) return t.to.replace("$1", groups[0] || "");
+        return lead + MARK;
       });
     }
+    // A cut at the start of a sentence leaves the next word to be capitalized.
+    s = s.replace(new RegExp("(^|[.!?]\\s+)" + MARK + "+\\s*([a-z])", "g"), (m, a, c) => a + c.toUpperCase());
+    s = s.split(MARK).join("");
     s = s.replace(/ {2,}/g, " ").replace(/\s+([,.!?])/g, "$1").replace(/^[,\s]+/, "");
     return { text: capFirst(s.trim()), cut };
   }
 
-  function joinItems(items, names) {
+  function joinItems(items, names, known) {
     const xs = items.map((t, i) => {
       const x = t.trim().replace(/[.;,!]+$/, "");
-      return i === 0 ? x : lowerFirst(x, names);
+      return i === 0 ? x : lowerFirst(x, names, known);
     });
     if (xs.length <= 1) return xs.join("");
     if (xs.length === 2) return xs[0] + " and " + xs[1];
@@ -548,6 +652,8 @@
     return String(g.items || "").split("\n").map((s) => s.trim().replace(LIST_MARK, "")).filter(Boolean);
   }
 
+  // Builds the text, and a map of which slot each stretch of it came from, so
+  // a flagged phrase can be traced back to the line that holds it.
   function assemble(st) {
     const m = st.methods;
     const cuts = [];
@@ -558,66 +664,105 @@
       cuts.push(...r.cut);
       return r.text ? sentenceCase(r.text) : "";
     };
-    const names = namesIn([st.point, st.situation, st.complication, st.close, st.background]
-      .concat(st.support, st.groups.map((g) => g.items + "\n" + g.label)).join("\n"));
-    const paras = [];
-    const head = [];
+    const allText = [st.point, st.situation, st.complication, st.close, st.background]
+      .concat(st.support, st.groups.map((g) => g.items + "\n" + g.label)).join("\n");
+    const names = namesIn(allText);
+    const known = new Set(allText.match(/\b[a-z][a-z'’-]+\b/g) || []);
+    const seg = (text, field, index) => ({ text, field, index: index || 0 });
+    const blocks = [];
 
-    if (m.wwb && st.isEmail && squash(st.subject)) head.push("Subject: " + squash(st.subject));
-    if (squash(st.greeting)) head.push(squash(st.greeting));
+    if (m.wwb && st.isEmail && squash(st.subject)) blocks.push({ head: true, join: "", segs: [seg("Subject: " + squash(st.subject), "subject")] });
+    if (squash(st.greeting)) blocks.push({ head: true, join: "", segs: [seg(squash(st.greeting), "greeting")] });
 
-    const point = tidy(st.point);
-    const support = m.mece ? [] : st.support.map(tidy).filter(Boolean);
+    const point = seg(tidy(st.point), "point");
+    const support = m.mece ? [] : st.support.map((t, i) => seg(tidy(t), "support", i)).filter((x) => x.text);
     let opening = [];
     if (m.scqa) {
-      const S = tidy(st.situation);
-      const C = tidy(st.complication);
+      const S = seg(tidy(st.situation), "situation");
+      const C = seg(tidy(st.complication), "complication");
       if (m.inverted) opening = [point, S, C];
       else if (st.order === "sca") opening = [S, C, point];
       else if (st.order === "csa") opening = [C, S, point];
       else opening = [point, S, C];
-      opening = opening.filter(Boolean);
+      opening = opening.filter((x) => x.text);
     } else {
-      opening = point ? [point] : [];
-      if (!m.mece && support.length && wordCount(support[0]) <= 30) opening.push(support.shift());
+      opening = point.text ? [point] : [];
+      if (!m.mece && support.length && wordCount(support[0].text) <= 30) opening.push(support.shift());
     }
-    if (opening.length) paras.push(opening.join(" "));
+    if (opening.length) blocks.push({ join: " ", segs: opening });
 
     if (m.mece) {
-      for (const g of st.groups) {
+      st.groups.forEach((g, gi) => {
         const items = groupItems(g).map((t) => {
           if (!st.trim) return t;
           const r = applyTrims(t, m.wwb);
           cuts.push(...r.cut);
           return r.text;
         }).filter(Boolean);
-        if (!items.length) continue;
+        if (!items.length) return;
         const label = squash(g.label).replace(/[:.\s]+$/, "");
         const asList = g.mode === "list" || (g.mode === "auto" && items.length >= 3);
         if (asList) {
-          const lines = items.map((t, i) => (i + 1) + ". " + sentenceCase(t));
-          paras.push((label ? label + ":\n" : "") + lines.join("\n"));
+          const segs = label ? [seg(label + ":", "group-label", gi)] : [];
+          items.forEach((t, k) => segs.push(seg((k + 1) + ". " + sentenceCase(t), "group-items", gi)));
+          blocks.push({ join: "\n", segs });
         } else {
-          const joined = joinItems(items, names);
-          paras.push(label ? finish(label + ": " + lowerFirst(joined, names)) : sentenceCase(joined));
+          const joined = joinItems(items, names, known);
+          blocks.push({ join: "", segs: [seg(label ? finish(label + ": " + lowerFirst(joined, names, known)) : sentenceCase(joined), "group-items", gi)] });
         }
-      }
+      });
     } else {
-      paras.push(...support);
+      support.forEach((s) => blocks.push({ join: "", segs: [s] }));
     }
     if (m.inverted) {
       const b = tidy(st.background);
-      if (b) paras.push(b);
+      if (b) blocks.push({ join: "", segs: [seg(b, "background")] });
     }
     const close = tidy(st.close);
-    if (close) paras.push(close);
+    if (close) blocks.push({ join: "", segs: [seg(close, "close")] });
+    if (squash(st.signoff)) blocks.push({ tail: true, join: "", segs: [seg(st.signoff.trim().replace(/[ \t]+/g, " "), "signoff")] });
 
-    const body = paras.filter(Boolean);
-    const blocks = [];
-    if (head.length) blocks.push(...head);
-    blocks.push(...body);
-    if (squash(st.signoff)) blocks.push(st.signoff.trim().replace(/[ \t]+/g, " "));
-    return { text: blocks.join("\n\n"), body: body.join("\n\n"), cuts, opening: opening.length };
+    let text = "";
+    const parts = [];
+    let bodyStart = -1;
+    let bodyEnd = 0;
+    blocks.forEach((b, bi) => {
+      if (bi) text += "\n\n";
+      if (!b.head && !b.tail && bodyStart < 0) bodyStart = text.length;
+      b.segs.forEach((s, si) => {
+        if (si) text += b.join;
+        const start = text.length;
+        text += s.text;
+        parts.push({ field: s.field, index: s.index, start, end: text.length });
+      });
+      if (!b.head && !b.tail) bodyEnd = text.length;
+    });
+    const body = bodyStart < 0 ? "" : text.slice(bodyStart, bodyEnd);
+    return { text, body, bodyStart: Math.max(0, bodyStart), cuts, parts, opening: opening.length };
+  }
+
+  // Writes the trims into the slots themselves, so the text you edit is the
+  // text you see. Returns what was cut; after this, nothing is trimmed silently.
+  function bakeTrims(state) {
+    const st = JSON.parse(JSON.stringify(state));
+    const cuts = [];
+    const bake = (v) => {
+      if (!squash(v)) return v;
+      const r = applyTrims(squash(v), st.methods.wwb);
+      cuts.push(...r.cut);
+      return r.text;
+    };
+    if (st.trim) {
+      for (const f of ["point", "situation", "complication", "background", "close"]) st[f] = bake(st[f]);
+      st.support = st.support.map(bake);
+      st.groups.forEach((g) => { g.items = String(g.items || "").split("\n").map((t) => (t.trim() ? bake(t) : t)).join("\n"); });
+      st.trim = false;
+    }
+    return { state: st, cuts };
+  }
+
+  function partAt(built, offset) {
+    return built.parts.find((p) => offset >= p.start && offset < p.end) || null;
   }
 
   // ---------------------------------------------------------------------
@@ -627,9 +772,6 @@
   const WASTE_CODES = new Set(["W2", "W3", "W4", "D6", "D6m", "D5", "D5m", "D7", "B4"]);
   const FILLER_WORDS = /\b(just|actually|basically|simply|literally|honestly)\b/gi;
 
-  // Bernoff's meaning ratio, estimated: the share of words that aren't stock
-  // phrases, intensifiers, weasel words, jargon or mood-only sentences.
-  // Greetings and sign-offs count as meaningful, as the skill's guide says.
   // Typing in a slot re-scores the rewrite, not the draft: keep recent answers.
   function remember(fn) {
     const cache = new Map();
@@ -643,6 +785,9 @@
     };
   }
 
+  // Bernoff's meaning ratio, estimated: the share of words that aren't stock
+  // phrases, intensifiers, weasel words, jargon or mood-only sentences.
+  // Greetings and sign-offs count as meaningful, as the skill's guide says.
   const meaningRatio = remember(function (text) {
     const src = String(text || "");
     const total = wordCount(src);
@@ -661,7 +806,7 @@
     const parsed = parseDraft(src);
     for (const p of parsed.pieces) {
       if (p.flags.filler !== "Mood, not a fact") continue;
-      const core = p.text.replace(/[.!?]+$/, "");
+      const core = p.raw.replace(/[.!?]+$/, "");
       const at = src.indexOf(core);
       if (at >= 0) spans.push([at, at + core.length]);
     }
@@ -681,12 +826,27 @@
     return { strong: r.counts.strong, moderate: r.counts.moderate, findings: r.findings };
   });
 
+  // The scanner's fix notes are written for Claude. These read better on the page.
+  const FIX_FOR_PAGE = {
+    B5: "Fill it in or delete it.",
+    C7: "Swap each one for the plain or specific word.",
+    D6: "Cut it. Say it the way you would to this person.",
+    D6m: "Open on the point, or on your own greeting.",
+    W1: "Say who did it: “you charged” instead of “was charged”.",
+    W2: "Swap the vague amount for a number or a name.",
+    W3: "Cut it. The fact underneath is stronger.",
+    W4: "Say it in plain words, or cut it.",
+  };
+  function plainFix(f) { return FIX_FOR_PAGE[f.code] || f.fix; }
+
   // ---------------------------------------------------------------------
   // The checks, from each method guide's own checklist
   // ---------------------------------------------------------------------
 
   const MONEY_OR_AMOUNT = /\$\s?\d[\d,]*(?:\.\d+)?|\b\d[\d,]*(?:\.\d+)?\s?(?:%|percent|dollars|bucks|therms|hours?|minutes?|miles?|days?|weeks?|months?|years?|people|gb|kwh|lbs?|pounds|kg)\b/i;
-  const COMPARISON = /\b(from|to|than|vs\.?|versus|instead|compared|up|down|more|less|fewer|higher|lower|over|under|last|before|after|per|a (?:month|year|week|day)|every|each|about|like|same|enough|worth|double|half|twice)\b|%/i;
+  // A comparison, not just any small word: "up from $96", "$61 instead of $95",
+  // "34 vs. 31 therms", "about one flight home".
+  const COMPARISON = /\b(?:up from|down from|from \$?\d|than|vs\.?|versus|instead of|compared|more|less|fewer|higher|lower|cheaper|pricier|increase[ds]?|decrease[ds]?|rose|dropped|jumped|went (?:up|down)|last (?:month|year|week|time|bill)|previous|double|half|twice|triple|the same as|as much as|enough for|equal to|about (?:one|a|an|two|three|the cost of)|roughly)\b|%/i;
   const PRECISION = /\$\s?\d[\d,]*\.\d{2}\b|\b\d+\.\d{2,}\b/;
   const VAGUE_AMOUNT = /\b(a lot|lots|tons|way (?:more|less|cheaper)|much (?:more|less|cheaper|higher|lower)|significant(?:ly)?|substantial(?:ly)?|considerabl[ey]|huge|massive|a fortune|a bunch)\b/i;
   const BUILDUP = /^(?:so,?\s|well,?\s|big news|some (?:big |exciting )?news|guess what|as some of you know|it'?s been a)/i;
@@ -701,7 +861,7 @@
   function stem(w) {
     return w.replace(/(?:ing|ed|es|s)$/, "");
   }
-  const STOP = new Set(["the", "a", "an", "and", "or", "to", "of", "for", "on", "in", "at", "we", "i", "you", "it", "is", "are", "be", "our", "my", "your", "still", "need", "needs", "should", "someone", "anyone", "has", "have", "yet", "also", "new", "get", "for", "with"]);
+  const STOP = new Set(["the", "a", "an", "and", "or", "to", "of", "for", "on", "in", "at", "we", "i", "you", "it", "is", "are", "be", "our", "my", "your", "still", "need", "needs", "should", "someone", "anyone", "has", "have", "yet", "also", "new", "get", "with"]);
   function keyStems(t) {
     return new Set(norm(t).split(" ").filter((w) => w.length > 2 && !STOP.has(w)).map(stem));
   }
@@ -712,6 +872,10 @@
     let n = 0;
     for (const x of A) if (B.has(x)) n += 1;
     return n / Math.min(A.size, B.size);
+  }
+
+  function bareNumbers(sentences) {
+    return sentences.filter((s) => MONEY_OR_AMOUNT.test(s) && !COMPARISON.test(s));
   }
 
   function check(st, parsed) {
@@ -785,7 +949,7 @@
       if (real.length) {
         add("draft-unused", "pyramid", "info",
           real.length === 1 ? "One sentence from your draft isn't used" : real.length + " sentences from your draft aren't used",
-          "Leave them out on purpose, or click them into a slot.", real.map((p) => p.text));
+          "Leave them out on purpose, or add them back.", real.map((p) => p.text));
       }
       if (filler.length) {
         add("draft-filler", "pyramid", "pass",
@@ -872,7 +1036,7 @@
     if (m.data) {
       if (point && !RX.digit.test(point)) add("data-big-idea", "data", "warn", "Put the key number in your Big Idea", "Your point of view and what's at stake, with the number that proves it. For example: The new plan saves us $34 a month.");
       else if (point) add("data-big-idea", "data", "pass", "Your Big Idea carries a number");
-      const bare = bodySentences.filter((s) => MONEY_OR_AMOUNT.test(s) && !COMPARISON.test(s.replace(MONEY_OR_AMOUNT, "")));
+      const bare = bareNumbers(bodySentences);
       if (bare.length) add("data-compare", "data", "warn", "Give every number a comparison", "Against last month, the estimate, the goal or another option. $241 is a fact; $241, up from $96 in October, is a point.", bare);
       else if (bodySentences.some((s) => MONEY_OR_AMOUNT.test(s))) add("data-compare", "data", "pass", "Every number has a comparison");
       const precise = bodySentences.filter((s) => PRECISION.test(s));
@@ -890,22 +1054,166 @@
     return out;
   }
 
-  // Before and after numbers for the scoreboard.
+  // ---------------------------------------------------------------------
+  // Step 2: what's wrong with the draft as written
+  // ---------------------------------------------------------------------
+
+  function diagnose(text, parsed, methods) {
+    methods = methods || emptyState().methods;
+    const flags = [];
+    if (!parsed || !parsed.pieces.length) return { flags, pointId: null };
+    const { piece, score } = pickPoint(parsed, methods);
+    let point = piece && score > -Infinity ? piece : null;
+    // With MECE, a list item isn't the point; the visitor writes one.
+    if (methods.mece && point && listItems(point.text).length > 1) point = null;
+    if (point && point.sentence > 1) {
+      flags.push({ id: "buried", kind: "fix", title: "Your point is in sentence " + point.sentence + " of " + parsed.sentences,
+        detail: "Readers decide how closely to read from the first line, so the rewrite moves it to the top.", pieces: [point.id] });
+    } else if (methods.mece && !point) {
+      flags.push({ id: "no-point", kind: "fix", title: "Nothing says what the list is for",
+        detail: "You'll write that one line in the next step.", pieces: [] });
+    } else if ((!point || score < 1) && parsed.pieces.filter((p) => !p.flags.filler).length > 1) {
+      flags.push({ id: "no-point", kind: "fix", title: "There's no clear ask or news yet",
+        detail: "You'll write the one sentence this message is for in the next step.", pieces: [] });
+    }
+    const filler = parsed.pieces.filter((p) => p.flags.filler);
+    if (filler.length) {
+      flags.push({ id: "filler", kind: "fix", title: filler.length === 1 ? "One line is filler" : filler.length + " lines are filler",
+        detail: "Stock openers and moods tell the reader nothing they need. The rewrite leaves them out.", pieces: filler.map((p) => p.id) });
+    }
+    if (point && score >= 1 && RX.vague.test(point.text) && !(RX.digit.test(point.text) || RX.date.test(point.text))) {
+      flags.push({ id: "vague", kind: "fix", title: "Your point leans on a vague word",
+        detail: "The fix step asks you to name the thing and the date.", pieces: [point.id], quotes: [point.text.match(RX.vague)[0]] });
+    }
+    if (methods.scqa && !parsed.pieces.some((p) => !p.flags.filler && p.flags.complication)) {
+      flags.push({ id: "no-change", kind: "fix", title: "It doesn't say what changed",
+        detail: "SCQA opens with what the reader knows and what changed, so your decision makes sense.", pieces: [] });
+    }
+    if (methods.mece) {
+      const items = parsed.pieces.filter((p) => !p.flags.filler).flatMap((p) => listItems(p.text));
+      if (items.length >= 3) flags.push({ id: "list", kind: "fix", title: items.length + " items in one stretch of text", detail: "The rewrite sorts them into groups you can name.", pieces: [] });
+      for (let i = 0; i < items.length; i++) {
+        const j = items.findIndex((t, k) => k > i && overlap(items[i], t) >= 0.6);
+        if (j > i) { flags.push({ id: "repeat", kind: "fix", title: "Two items say the same thing", detail: "You'll keep one of them.", pieces: [], quotes: [items[i], items[j]] }); break; }
+      }
+    }
+    const money = String(text || "").match(new RegExp(VAGUE_AMOUNT.source, "gi"));
+    if (money && (methods.data || MONEY_TALK.test(text))) {
+      flags.push({ id: "vague-amount", kind: "fix", title: "It talks about money without the numbers", detail: "Storytelling with Data asks for the figure, next to what it compares with.", pieces: [], quotes: Array.from(new Set(money.map((x) => x.toLowerCase()))) });
+    }
+    const hits = TellScan.scan(String(text || ""), { wwb: methods.wwb }).findings.filter((f) => f.severity !== "weak" && f.code !== "W5");
+    if (hits.length) {
+      const quotes = Array.from(new Set(hits.map((f) => (f.match || "").trim()).filter(Boolean))).slice(0, 4);
+      flags.push({ id: "tells", kind: "fix", title: hits.length === 1 ? "One phrase reads as padded or machine-made" : hits.length + " phrases read as padded or machine-made",
+        detail: "The rewrite trims the stock ones and flags the rest for you.", pieces: [], quotes });
+    }
+    const n = wordCount(text);
+    if (n > 250) flags.push({ id: "long", kind: "fix", title: "It runs " + n + " words", detail: "Most personal email works best well under 250.", pieces: [] });
+    if (!flags.length) flags.push({ id: "clean", kind: "good", title: "This draft already leads with its point", detail: "The rewrite tidies the structure, and the checks confirm it.", pieces: [] });
+    if (parsed.greeting || parsed.signoff) {
+      const what = parsed.greeting && parsed.signoff ? "Your greeting and sign-off stay" : parsed.greeting ? "Your greeting stays" : "Your sign-off stays";
+      flags.push({ id: "voice", kind: "good", title: what + " as you wrote " + (parsed.greeting && parsed.signoff ? "them" : "it"), detail: "That's your voice, so the rewrite keeps it.", pieces: [] });
+    }
+    return { flags, pointId: point ? point.id : null };
+  }
+
+  // ---------------------------------------------------------------------
+  // Step 3: one card per line that needs a fix
+  // ---------------------------------------------------------------------
+
+  const CARD_FOR_CHECK = {
+    "minto-point": "point", "minto-one": "point", "minto-specific": "point", "minto-length": "point",
+    "inv-lede": "point", "inv-when": "point", "inv-buildup": "point", "data-big-idea": "point",
+    "scqa-situation": "situation", "scqa-complication": "complication", "scqa-length": "point",
+    "minto-close": "close", "wwb-subject": "subject",
+    "mece-rule": "groups", "mece-count": "groups", "mece-labels": "groups", "mece-overlap": "groups",
+  };
+  const FIELD_ORDER = ["point", "situation", "complication", "groups", "group-items", "group-label", "support", "background", "close", "subject", "general"];
+
+  function tasks(st, parsed) {
+    const built = assemble(st);
+    const cards = new Map();
+    const card = (field, index) => {
+      const f = field === "group-label" ? "group-items" : field;
+      const key = f === "groups" ? "groups" : f + (f === "support" || f === "group-items" ? ":" + (index || 0) : "");
+      if (!cards.has(key)) cards.set(key, { key, field: f, index: index || 0, issues: [] });
+      return cards.get(key);
+    };
+    const checks = check(st, parsed).filter((c) => c.status === "warn");
+    for (const c of checks) {
+      const field = CARD_FOR_CHECK[c.id];
+      if (field) card(field, 0).issues.push({ title: c.title, detail: c.detail, quotes: c.quotes, method: c.method });
+    }
+    // Phrase-level problems: trace each one to the line that holds it.
+    const locate = (offset) => partAt(built, offset);
+    const put = (part, issue) => {
+      if (!part || part.field === "greeting" || part.field === "signoff") return;
+      if (part.field === "subject" && !st.isEmail) return;
+      const c = card(part.field, part.index);
+      if (!c.issues.some((x) => x.title === issue.title && String(x.quotes) === String(issue.quotes))) c.issues.push(issue);
+    };
+    const scanned = TellScan.scan(built.text, { wwb: st.methods.wwb });
+    for (const f of scanned.findings) {
+      if (f.severity === "weak") continue;
+      const issue = { title: f.label, detail: plainFix(f), quotes: f.match ? [f.match.trim()] : [], method: f.family === "WWB" ? "wwb" : "audit" };
+      if (typeof f.start === "number") put(locate(f.start), issue);
+      else if (f.spans && f.spans.length) put(locate(f.spans[0].start), issue);
+      else if (f.code !== "W5") card("general", 0).issues.push(issue);
+    }
+    if (st.methods.data) {
+      const vague = new RegExp(VAGUE_AMOUNT.source, "gi");
+      let m;
+      while ((m = vague.exec(built.text))) {
+        put(locate(m.index), { title: "Vague amount", detail: "Swap it for the number, with a comparison.", quotes: [m[0]], method: "data" });
+      }
+      for (const s of bareNumbers(sentencesOf(built.body))) {
+        const at = built.text.indexOf(s);
+        if (at >= 0) put(locate(at), { title: "A number with nothing to compare it to", detail: "Add what it's up or down from, or what it's worth in real terms.", quotes: [s.match(MONEY_OR_AMOUNT)[0]], method: "data" });
+      }
+    }
+    const list = Array.from(cards.values()).filter((c) => c.issues.length);
+    list.sort((a, b) => (FIELD_ORDER.indexOf(a.field) - FIELD_ORDER.indexOf(b.field)) || (a.index - b.index));
+    for (const c of list) c.value = fieldValue(st, c.field, c.index);
+    return list;
+  }
+
+  function fieldValue(st, field, index) {
+    if (field === "support") return st.support[index] || "";
+    if (field === "group-items") return (st.groups[index] || {}).items || "";
+    if (field === "groups" || field === "general") return "";
+    return st[field] || "";
+  }
+
+  function setField(st, field, index, value) {
+    if (field === "support") st.support[index] = value;
+    else if (field === "group-items") st.groups[index].items = value;
+    else if (field !== "groups" && field !== "general") st[field] = value;
+    return st;
+  }
+
+  // Before and after numbers for the finish line.
   function compare(draftText, st, parsed) {
     const built = assemble(st);
     const before = tellCount(draftText, st.methods.wwb);
     const after = tellCount(built.text, st.methods.wwb);
     let pointFrom = null;
+    let pointTo = null;
     if (parsed && squash(st.point)) {
       const p = norm(st.point);
       const hit = parsed.pieces.find((x) => { const n = norm(x.text); return n && (p.includes(n) || n.includes(p)); });
       if (hit) pointFrom = hit.sentence;
+      const part = built.parts.find((x) => x.field === "point");
+      if (part) pointTo = sentencesOf(built.text.slice(built.bodyStart, part.start)).length + 1;
     }
+    const filler = parsed ? parsed.pieces.filter((p) => p.flags.filler && !usedPieces(st, parsed).has(p.id)).length : 0;
     return {
       words: [wordCount(draftText), wordCount(built.text)],
       tells: [before.strong + before.moderate, after.strong + after.moderate],
       ratio: st.methods.wwb ? [meaningRatio(draftText), meaningRatio(built.text)] : null,
       pointFrom,
+      pointTo,
+      filler,
+      cuts: built.cuts.length,
     };
   }
 
@@ -918,7 +1226,9 @@
         ? { label: "Answer", hint: "Your decision or your ask. It answers the question the complication raises.", example: "So this year it's at our place, same time: 2pm on the 26th." }
         : m.data
           ? { label: "Big Idea", hint: "Your point of view and what's at stake, in one sentence.", example: "The new plan saves us $34 a month." }
-          : { label: "Your point", hint: "The one sentence the message exists to deliver: the ask, the news, the decision, or the fix you want.", example: "Could we move the deck start from 11/14 to 11/21?" };
+          : m.mece
+            ? { label: "Your point", hint: "One sentence that says what the list is for.", example: "Three jobs before Friday." }
+            : { label: "Your point", hint: "The one sentence the message exists to deliver: the ask, the news, the decision, or the fix you want.", example: "Could we move the deck start from 11/14 to 11/21?" };
     if (m.data && (m.inverted || m.scqa)) point.hint += " Put the key number in it.";
     return {
       point,
@@ -938,10 +1248,11 @@
   }
 
   const api = {
-    METHODS, EXAMPLES, TRIMS,
-    words, wordCount, splitSentences, splitClauses, parseDraft, describe, listItems,
-    emptyState, methodsFrom, suggest, switchMethod, usedPieces,
-    applyTrims, assemble, meaningRatio, tellCount, check, compare, slotCopy, overlap,
+    METHODS, METHOD_NAMES, METHOD_JOBS, EXAMPLES, TRIMS,
+    words, wordCount, splitSentences, splitClauses, parseDraft, describe, listItems, isCloser,
+    emptyState, methodsFrom, recommend, suggest, switchMethod, usedPieces,
+    applyTrims, bakeTrims, assemble, partAt, meaningRatio, tellCount, plainFix, check, diagnose, tasks, fieldValue, setField,
+    compare, slotCopy, overlap,
   };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.WorkshopCore = api;

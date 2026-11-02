@@ -130,7 +130,10 @@ The browser tests block requests to other hosts, so they don't need the network 
 
 ## Changing the workshop
 
-The workshop's rules live in `assets/workshop-core.js`, and each one comes from the skill's method guides (`references/minto.md` and `references/methods/*.md`):
+The workshop's rules live in `assets/workshop-core.js`, and each one comes from the skill's method guides (`references/minto.md`, `references/methods.md` and `references/methods/*.md`). The page in `assets/workshop.js` only draws the four steps.
+
+- `recommend` picks methods for a draft, following section 3 of `references/methods.md`.
+- `diagnose` writes the Review step's flags. `tasks` turns each failed check into a fix card tied to the line it's about, using the map of slots that `assemble` returns.
 
 - `slotCopy` holds each slot's label, hint and example. A method that owns a slot changes its label: the point becomes the Answer under SCQA, the Lede under Inverted Pyramid and the Big Idea under Storytelling with Data.
 - `assemble` puts the slots in each method's order. The order follows the table in `references/methods.md`: Minto's skeleton first, then MECE's groups, then the opening and the order.
