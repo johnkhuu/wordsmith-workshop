@@ -9,7 +9,7 @@ The page opens on a 30-second film, explains how the skill works in three steps,
 | Path | What it does |
 |---|---|
 | `index.html` | The page and all of its copy |
-| `assets/style.css` | Styles, with light and dark themes |
+| `assets/style.css` | Styles: the Dawn palette (warm white, ink, and a peach-to-violet gradient), with light and dark themes |
 | `assets/scanner.js` | The tell scanner, ported from the skill's `scripts/tell_scan.py` |
 | `assets/app.js` | Connects the scanner to the page: highlights, report, samples |
 | `assets/methods.js` | The method tabs (every method shows if JavaScript is off) |

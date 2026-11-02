@@ -5,38 +5,40 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Wordsmith Workshop</title>
 <meta name="description" content="A Claude skill for personal writing. It puts your point first, backs it with real details, and checks every line for the patterns that make writing read like a chatbot wrote it.">
-<meta name="theme-color" content="#11172A">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2311172A'/%3E%3Cpath d='M14 50l6-18 26-26a5 5 0 0 1 7 0l4 4a5 5 0 0 1 0 7L31 43z' fill='%232F5BEA'/%3E%3Cpath d='M14 50l6-18 11 11z' fill='%23F2D2A9'/%3E%3Cpath d='M46 6a5 5 0 0 1 7 0l4 4a5 5 0 0 1 0 7l-3 3-11-11z' fill='%23FFE27A'/%3E%3C/svg%3E">
+<meta name="theme-color" content="#FFF8F3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14111F" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23FFB199'/%3E%3Cstop offset='.5' stop-color='%23FF6F5E'/%3E%3Cstop offset='1' stop-color='%239B7BFA'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='9' fill='url(%23g)'/%3E%3Cpath d='M16 5.5l6.5 9.5L16 26.5 9.5 15z' fill='%23fff'/%3E%3Cpath d='M16 15.5v7' stroke='%23FF6F5E' stroke-width='1.6' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='13.6' r='1.9' fill='%23FF6F5E'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Caveat:wght@600;700&family=Courier+Prime:wght@400;700&family=Gloock&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..650;1,9..144,400..650&family=Inter:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
 
 <header class="site-head">
-    <div class="wrap head-row">
-      <a class="brand" href="#top"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M5 27l3.2-9.4L22 3.8a2.7 2.7 0 0 1 3.8 0l2.4 2.4a2.7 2.7 0 0 1 0 3.8L14.4 23.8z" fill="#2F5BEA"/><path d="M5 27l3.2-9.4 6.2 6.2z" fill="#F2D2A9"/><path d="M5 27l1.4-4.1 2.7 2.7z" fill="#151B2D"/><path d="M22 3.8a2.7 2.7 0 0 1 3.8 0l2.4 2.4a2.7 2.7 0 0 1 0 3.8l-1.6 1.6-6.2-6.2z" fill="#EE8F9C"/></svg><span>Wordsmith Workshop</span></a>
-      <nav class="site-nav" aria-label="Sections">
-        <a href="#film">Film</a>
-        <a href="#how">How it works</a>
-        <a href="#methods">Methods</a>
-        <a href="#scanner">Try it</a>
-      </nav>
-    </div>
+  <div class="wrap head-row">
+    <a class="brand" href="#top"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><defs><linearGradient id="mark-head" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFB199"/><stop offset=".5" stop-color="#FF6F5E"/><stop offset="1" stop-color="#9B7BFA"/></linearGradient></defs><rect width="32" height="32" rx="9" fill="url(#mark-head)"/><path d="M16 5.5l6.5 9.5L16 26.5 9.5 15z" fill="#fff"/><path d="M16 15.5v7" stroke="#FF6F5E" stroke-width="1.6" stroke-linecap="round"/><circle cx="16" cy="13.6" r="1.9" fill="#FF6F5E"/></svg><span>Wordsmith Workshop</span></a>
+    <nav class="site-nav" aria-label="Sections">
+      <a href="#film">Film</a>
+      <a href="#how">How it works</a>
+      <a href="#methods">Methods</a>
+      <a href="#scanner">Scanner</a>
+    </nav>
+  </div>
 </header>
 
 <main id="top">
-  <section class="hero-body" aria-labelledby="hero-title">
-    <div class="wrap hero-grid">
-      <p class="eyebrow-tape">A Claude skill for personal writing</p>
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="wrap hero-inner">
+      <p class="pill"><span class="pill-dot" aria-hidden="true"></span>A Claude skill for personal writing</p>
       <h1 id="hero-title">Lead with <em>the point.</em> Back it with real details.</h1>
       <p class="lede">Wordsmith Workshop drafts and checks the writing you send as yourself: a note to the contractor, a complaint to the airline, a toast, a card. Every piece puts your point first and comes back sounding like you.</p>
-
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#scanner">Scan a draft</a>
+        <a class="btn btn-quiet" href="#how">How it works</a>
+      </div>
       <div class="film-frame" id="film">
-        <p class="scribble scribble-sound" aria-hidden="true">sound on!</p>
-        <svg class="scribble-arrow" viewBox="0 0 120 80" aria-hidden="true" focusable="false"><path d="M8 10 C 40 4, 86 18, 104 62" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><path d="M92 54 L104 64 L110 48" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <figure class="film" data-film data-vo-base="assets/film/vo/">
+        <figure class="film" data-film data-vo-base="assets/film/vo/">
           <div class="film-stage">
             <canvas class="film-canvas" width="1920" height="1080" aria-hidden="true"></canvas>
             <p class="film-caption" hidden></p>
@@ -79,13 +81,7 @@
           </figcaption>
         </figure>
       </div>
-
-      <div class="cta-row">
-        <a class="btn btn-primary" href="#scanner">Scan a draft</a>
-        <a class="btn btn-ghost" href="#how">How it works</a>
-      </div>
     </div>
-    <svg class="tear tear-hero" viewBox="0 0 1440 40" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M0,40 L0,14 L17,20 L32,18 L54,9 L78,9 L101,9 L116,16 L147,10 L165,19 L198,18 L220,26 L235,23 L255,11 L271,14 L302,11 L327,20 L349,18 L364,9 L382,20 L405,14 L430,16 L450,22 L478,12 L504,17 L535,21 L555,26 L572,16 L601,11 L624,9 L652,22 L677,24 L698,21 L723,18 L747,23 L779,17 L807,9 L835,20 L869,23 L888,15 L916,8 L939,11 L955,9 L985,10 L1004,15 L1035,9 L1058,18 L1090,23 L1121,13 L1143,14 L1175,25 L1192,11 L1211,12 L1234,19 L1254,8 L1276,15 L1301,25 L1329,17 L1355,20 L1370,24 L1400,24 L1430,15 L1440,18 L1440,40 Z"/></svg>
   </section>
 
   <section class="band band-how" id="how" aria-labelledby="how-title">
@@ -118,7 +114,6 @@
   </section>
 
   <section class="band band-methods" id="methods" aria-labelledby="methods-title">
-    <svg class="tear tear-top" viewBox="0 0 1440 40" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M0,40 L0,14 L17,20 L32,18 L54,9 L78,9 L101,9 L116,16 L147,10 L165,19 L198,18 L220,26 L235,23 L255,11 L271,14 L302,11 L327,20 L349,18 L364,9 L382,20 L405,14 L430,16 L450,22 L478,12 L504,17 L535,21 L555,26 L572,16 L601,11 L624,9 L652,22 L677,24 L698,21 L723,18 L747,23 L779,17 L807,9 L835,20 L869,23 L888,15 L916,8 L939,11 L955,9 L985,10 L1004,15 L1035,9 L1058,18 L1090,23 L1121,13 L1143,14 L1175,25 L1192,11 L1211,12 L1234,19 L1254,8 L1276,15 L1301,25 L1329,17 L1355,20 L1370,24 L1400,24 L1430,15 L1440,18 L1440,40 Z"/></svg>
     <div class="wrap">
       <header class="section-head">
         <p class="eyebrow">The methods</p>
@@ -137,7 +132,7 @@
         <article class="method-panel" role="tabpanel" id="panel-pyramid" aria-labelledby="tab-pyramid" tabindex="0">
           <header class="method-head">
             <h3>Pyramid Principle</h3>
-            <p class="method-meta"><span class="method-by">Barbara Minto</span> <span class="sticker">Always on</span></p>
+            <p class="method-meta"><span class="method-by">Barbara Minto</span> <span class="badge">Always on</span></p>
             <p class="method-use">Use it for: Everything. It's the base every other method sits on.</p>
           </header>
           <div class="method-compare">
@@ -162,7 +157,7 @@
         <article class="method-panel" role="tabpanel" id="panel-scqa" aria-labelledby="tab-scqa" tabindex="0">
           <header class="method-head">
             <h3>SCQA</h3>
-            <p class="method-meta"><span class="method-by">Barbara Minto</span> <span class="sticker">The opening</span></p>
+            <p class="method-meta"><span class="method-by">Barbara Minto</span> <span class="badge">The opening</span></p>
             <p class="method-use">Use it for: Explaining a decision or a change to people who need the context first.</p>
           </header>
           <div class="method-compare">
@@ -187,7 +182,7 @@
         <article class="method-panel" role="tabpanel" id="panel-mece" aria-labelledby="tab-mece" tabindex="0">
           <header class="method-head">
             <h3>MECE</h3>
-            <p class="method-meta"><span class="method-by">Barbara Minto</span> <span class="sticker">The grouping</span></p>
+            <p class="method-meta"><span class="method-by">Barbara Minto</span> <span class="badge">The grouping</span></p>
             <p class="method-use">Use it for: Plans, options and lists of asks: anything with parts.</p>
           </header>
           <div class="method-compare">
@@ -212,7 +207,7 @@
         <article class="method-panel" role="tabpanel" id="panel-inverted" aria-labelledby="tab-inverted" tabindex="0">
           <header class="method-head">
             <h3>Inverted Pyramid</h3>
-            <p class="method-meta"><span class="method-by">Newsroom practice</span> <span class="sticker">The order</span></p>
+            <p class="method-meta"><span class="method-by">Newsroom practice</span> <span class="badge">The order</span></p>
             <p class="method-use">Use it for: News, announcements, changes of plan and recaps.</p>
           </header>
           <div class="method-compare">
@@ -237,7 +232,7 @@
         <article class="method-panel" role="tabpanel" id="panel-wwb" aria-labelledby="tab-wwb" tabindex="0">
           <header class="method-head">
             <h3>Writing Without Bullshit</h3>
-            <p class="method-meta"><span class="method-by">Josh Bernoff</span> <span class="sticker">The edit</span></p>
+            <p class="method-meta"><span class="method-by">Josh Bernoff</span> <span class="badge">The edit</span></p>
             <p class="method-use">Use it for: Busy readers: a company, an office, a contractor. Bad news, too.</p>
           </header>
           <div class="method-compare">
@@ -262,7 +257,7 @@
         <article class="method-panel" role="tabpanel" id="panel-data" aria-labelledby="tab-data" tabindex="0">
           <header class="method-head">
             <h3>Storytelling with Data</h3>
-            <p class="method-meta"><span class="method-by">Cole Nussbaumer Knaflic</span> <span class="sticker">The numbers</span></p>
+            <p class="method-meta"><span class="method-by">Cole Nussbaumer Knaflic</span> <span class="badge">The numbers</span></p>
             <p class="method-use">Use it for: Anything with figures: budgets, bills, comparisons.</p>
           </header>
           <div class="method-compare">
@@ -286,7 +281,6 @@
         </article>
       </div>
     </div>
-    <svg class="tear tear-bottom" viewBox="0 0 1440 40" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M0,40 L0,14 L17,20 L32,18 L54,9 L78,9 L101,9 L116,16 L147,10 L165,19 L198,18 L220,26 L235,23 L255,11 L271,14 L302,11 L327,20 L349,18 L364,9 L382,20 L405,14 L430,16 L450,22 L478,12 L504,17 L535,21 L555,26 L572,16 L601,11 L624,9 L652,22 L677,24 L698,21 L723,18 L747,23 L779,17 L807,9 L835,20 L869,23 L888,15 L916,8 L939,11 L955,9 L985,10 L1004,15 L1035,9 L1058,18 L1090,23 L1121,13 L1143,14 L1175,25 L1192,11 L1211,12 L1234,19 L1254,8 L1276,15 L1301,25 L1329,17 L1355,20 L1370,24 L1400,24 L1430,15 L1440,18 L1440,40 Z"/></svg>
   </section>
 
   <section class="band band-scan" id="scanner" aria-labelledby="scanner-title">
@@ -358,7 +352,7 @@
 
 <footer class="site-foot">
   <div class="wrap foot-row">
-    <p class="brand"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M5 27l3.2-9.4L22 3.8a2.7 2.7 0 0 1 3.8 0l2.4 2.4a2.7 2.7 0 0 1 0 3.8L14.4 23.8z" fill="#2F5BEA"/><path d="M5 27l3.2-9.4 6.2 6.2z" fill="#F2D2A9"/><path d="M5 27l1.4-4.1 2.7 2.7z" fill="#151B2D"/><path d="M22 3.8a2.7 2.7 0 0 1 3.8 0l2.4 2.4a2.7 2.7 0 0 1 0 3.8l-1.6 1.6-6.2-6.2z" fill="#EE8F9C"/></svg><span>Wordsmith Workshop</span></p>
+    <p class="brand"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><defs><linearGradient id="mark-foot" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFB199"/><stop offset=".5" stop-color="#FF6F5E"/><stop offset="1" stop-color="#9B7BFA"/></linearGradient></defs><rect width="32" height="32" rx="9" fill="url(#mark-foot)"/><path d="M16 5.5l6.5 9.5L16 26.5 9.5 15z" fill="#fff"/><path d="M16 15.5v7" stroke="#FF6F5E" stroke-width="1.6" stroke-linecap="round"/><circle cx="16" cy="13.6" r="1.9" fill="#FF6F5E"/></svg><span>Wordsmith Workshop</span></p>
     <p>A skill for Claude. Methods from Barbara Minto, Josh Bernoff and Cole Nussbaumer Knaflic. The tell catalog is adapted from <a href="https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing">Wikipedia: Signs of AI writing</a> (WikiProject AI Cleanup, CC BY-SA 4.0). The scanner reports patterns. It can't tell you who or what wrote a piece.</p>
   </div>
 </footer>
