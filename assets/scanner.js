@@ -206,6 +206,11 @@
     return r / m;
   }
 
+  // Python prints a whole-number float as "2.0"; JS prints it as "2".
+  function pyFloatText(x) {
+    return Number.isInteger(x) ? x.toFixed(1) : String(x);
+  }
+
   function findAll(src, flags, text) {
     const rx = new RegExp(src, flags.includes("g") ? flags : flags + "g");
     return Array.from(text.matchAll(rx));
@@ -490,7 +495,7 @@
         findings.push({
           code: "C5", family: "Rhythm", severity: "moderate", label: "Uniform sentence length",
           line: 0,
-          match: "spread " + rhythm.spread + " words, " + rhythm.in_8_20_band_pct + "% of sentences in the 8-20 band",
+          match: "spread " + pyFloatText(rhythm.spread) + " words, " + rhythm.in_8_20_band_pct + "% of sentences in the 8-20 band",
           context: "", fix: "Vary on purpose: a short punch after a long sentence, a question, a fragment.",
         });
       }
