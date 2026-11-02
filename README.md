@@ -6,39 +6,46 @@ The page explains the skill's five layers, its methods and formats, and the craf
 
 ## What's here
 
-| File | What it does |
+| Path | What it does |
 |---|---|
 | `index.html` | The page and all of its copy |
 | `assets/style.css` | Styles, with light and dark themes |
 | `assets/scanner.js` | The tell scanner, ported from the skill's `scripts/tell_scan.py` |
 | `assets/app.js` | Connects the scanner to the page: highlights, report, samples |
+| `tests/` | Unit tests for the scanner and browser tests for the page |
+| `.github/` | CI, PR title checks, the PR template and Dependabot |
 
-No build step, no dependencies, no backend. The scanner runs in the browser, so pasted text never leaves the page. Fonts load from Google Fonts.
+The site itself has no build step, no runtime dependencies and no backend. The scanner runs in the browser, so pasted text never leaves the page. Fonts load from Google Fonts.
 
 ## Run it locally
 
 Open `index.html` in a browser, or serve the folder:
 
 ```bash
-python3 -m http.server 8000
+npm start
 ```
 
 Then visit http://localhost:8000.
 
+## Tests
+
+```bash
+npm ci
+```
+
+```bash
+npx playwright install chromium
+```
+
+```bash
+npm test
+```
+
+The unit tests check the scanner against results saved from the skill's Python script, including cases just either side of every threshold. The browser tests load the page in Chromium and use it the way a visitor would. CI runs both on every pull request. See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow, the naming rules for pull requests and branches, and how to keep the scanner in step with the skill.
+
 ## Publish with GitHub Pages
 
-In the repository on GitHub, go to Settings, then Pages. Under "Build and deployment," choose "Deploy from a branch," pick the branch that holds this site and the `/ (root)` folder, and save. The site appears at `https://<owner>.github.io/wordsmith-workshop/` a minute or two later.
-
-## Keeping the scanner in step with the skill
-
-`assets/scanner.js` copies the patterns, thresholds and severities from `scripts/tell_scan.py` in the skill. When the Python script changes, make the same change in the JavaScript. The JS version adds character offsets to each finding so the page can highlight it, and otherwise returns the same result object as `tell_scan.py --json`.
-
-To check that the two agree, run both over the same text and compare the output. In Node:
-
-```js
-const { scan } = require("./assets/scanner.js");
-console.log(JSON.stringify(scan(text, { wwb: true }), null, 2));
-```
+In the repository on GitHub, go to Settings, then Pages. Under "Build and deployment," choose "Deploy from a branch," pick `main` and the `/ (root)` folder, and save. The site appears at `https://<owner>.github.io/wordsmith-workshop/` a minute or two later.
 
 ## Credits
 
