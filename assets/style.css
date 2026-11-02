@@ -881,13 +881,32 @@ textarea.slot-input { resize: none; overflow: hidden; min-height: 2.9rem; displa
 .wz-sent.is-voice .wz-sent-tag { color: var(--ok); }
 mark.wz-tell { background: transparent; color: inherit; text-decoration: underline wavy var(--accent); text-decoration-thickness: 1.5px; text-underline-offset: 4px; text-decoration-skip-ink: none; }
 
-.wz-flags { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-.wz-flag { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; align-items: start; }
-.wz-flag-icon { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font: 700 0.85rem/1 var(--font-body); }
-.wz-flag.is-fix .wz-flag-icon { background: var(--accent); color: var(--on-dawn); }
-.wz-flag.is-fix .wz-flag-icon::after { content: "!"; }
-.wz-flag.is-good .wz-flag-icon { background: var(--ok-tint); color: var(--ok); }
-.wz-flag.is-good .wz-flag-icon::after { content: "✓"; }
+.wz-flags { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.wz-flag { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; align-items: start; }
+.wz-flag-desk { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.wz-flag-ok { margin-left: 4px; color: var(--ok); }
+
+/* the desks: one ring color each */
+.d-structure { --desk: var(--violet-ink); }
+.d-line { --desk: var(--accent); }
+.d-copy { --desk: var(--moderate); }
+.d-facts { --desk: var(--ok); }
+.d-copywriter { --desk: #C23D84; }
+.d-tells { --desk: var(--ink-soft); }
+.wz-avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 34px; height: 34px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 2px var(--desk, var(--line-strong));
+  font: 700 0.75rem/1 var(--font-body);
+  letter-spacing: 0.02em;
+}
+.wz-flag.is-fix .wz-avatar { background: color-mix(in srgb, var(--desk) 12%, var(--surface)); }
+.wz-flag.is-good .wz-avatar { opacity: 0.8; }
 .wz-flag-title { font-weight: 600; line-height: 1.4; }
 .wz-flag-detail { color: var(--ink-soft); font-size: 0.92rem; line-height: 1.5; }
 .wz-quotes { font-size: 0.9rem; display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 2px; }
@@ -946,12 +965,29 @@ mark.ws-new { color: inherit; border-radius: 3px; background: var(--ok-tint); an
 .wz-cuts q { color: var(--ink); text-decoration: line-through; text-decoration-color: var(--accent); }
 
 .wz-task { background: var(--surface); border-color: var(--line-strong); box-shadow: var(--shadow-1); }
+.wz-task-from { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 0.95rem; }
+.wz-issue-desk { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.wz-board { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.wz-desk-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) 22px; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
+.wz-desk-name { font-weight: 600; font-size: 0.92rem; line-height: 1.3; }
+.wz-desk-status { font-size: 0.82rem; color: var(--ink-soft); line-height: 1.35; }
+.wz-desk-row.is-signed .wz-desk-status { color: var(--ok); font-weight: 600; }
+.wz-desk-row.is-open { border-color: var(--accent); }
+.wz-desk-mark { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; }
+.wz-desk-row.is-signed .wz-desk-mark { background: var(--ok-tint); }
+.wz-desk-mark svg { width: 15px; height: 15px; fill: var(--ok); }
 .wz-task-count { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-ink); }
 .wz-task-note { margin-left: 6px; text-transform: none; letter-spacing: 0; font-weight: 600; color: var(--ink-soft); }
 .wz-task-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .wz-task-head h4 { font-family: var(--font-display); font-weight: 500; font-size: 1.4rem; }
 .wz-issues { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.wz-issues li { padding: 10px 12px; border-radius: 12px; background: var(--muted); border-left: 3px solid var(--accent); }
+.wz-issues li { padding: 10px 12px; border-radius: 12px; background: var(--muted); border-left: 3px solid var(--desk, var(--accent)); }
+.d-line-structure { --desk: var(--violet-ink); }
+.d-line-line { --desk: var(--accent); }
+.d-line-copy { --desk: var(--moderate); }
+.d-line-facts { --desk: var(--ok); }
+.d-line-copywriter { --desk: #C23D84; }
+.d-line-tells { --desk: var(--ink-soft); }
 .wz-issue-title { font-weight: 600; line-height: 1.4; }
 .wz-issue-detail { color: var(--ink-soft); font-size: 0.92rem; line-height: 1.5; }
 .wz-input-label { font-weight: 600; margin-top: 4px; }
@@ -1033,6 +1069,7 @@ mark.ws-new { color: inherit; border-radius: 3px; background: var(--ok-tint); an
 
 @media (max-width: 980px) {
   .wz-grid, .wz-grid-fix { grid-template-columns: minmax(0, 1fr); }
+  .wz-board { grid-template-columns: minmax(0, 1fr); }
   .steps { grid-template-columns: minmax(0, 1fr); max-width: 640px; }
   .scan-grid { grid-template-columns: minmax(0, 1fr); gap: 32px; }
   .families { grid-template-columns: repeat(2, minmax(0, 1fr)); }

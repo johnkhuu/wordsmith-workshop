@@ -191,9 +191,9 @@ test("the finished message copies, reports leftover tells, and the last checks c
   assert.match(await page.textContent(".wz-clear h4"), /Nothing to fix/);
   await page.click("#wz-finish");
   assert.equal(await active(page), "wz-h-send");
-  assert.match(await page.textContent("#wz-final-note"), /^No tells found/);
+  assert.match(await page.textContent("#wz-final-note"), /^Every desk reads it clean/);
   await page.fill("#wz-final", (await page.inputValue("#wz-final")) + "\n\nIn summary, we can't wait.");
-  await page.waitForFunction(() => /still read|still reads/.test(document.getElementById("wz-final-note").textContent));
+  await page.waitForFunction(() => /^The desk has \d+ notes?/.test(document.getElementById("wz-final-note").textContent));
   await page.click("#ws-copy");
   await page.waitForFunction(() => document.getElementById("ws-copy").textContent === "Copied");
   assert.equal(await page.evaluate(() => navigator.clipboard.readText()), await page.inputValue("#wz-final"));
@@ -280,4 +280,39 @@ test("on a phone every step fits, in both themes, with 16px text in its fields",
     assert.deepEqual(errors, []);
     await context.close();
   }
+});
+
+test("the desk signs every note, from review to sign-off", async () => {
+  const { page, context, errors } = await open();
+  await page.fill("#ws-draft", "Hi Sam,\n\nCould you come by Friday, 11/7/2026 at 7pm? Dana and Dena will be there at 8 p.m. I think it might be a bit late, maybe.\n\nThanks,\nJo");
+  await page.click("#wz-check");
+  const notes = await page.$$eval(".wz-flag", (els) => els.map((e) => e.querySelector(".wz-flag-desk").textContent + ": " + e.querySelector(".wz-flag-title").textContent.replace(/^(To fix|Looks good): /, "")));
+  assert.ok(notes.includes("Fact-checker: A date doesn't check out"), notes.join(" | "));
+  assert.ok(notes.some((n) => /^Copy editor: \d+ copy fixes$/.test(n)), notes.join(" | "));
+  assert.ok(notes.some((n) => n.startsWith("Line editor: ")), notes.join(" | "));
+
+  await page.click("#wz-rewrite");
+  const from = await page.$$eval("#wz-task .wz-task-from", (els) => els.map((e) => e.textContent));
+  assert.match(from[0], /^[A-Z]{2}Note from the (Structural editor|Line editor|Copy editor|Fact-checker|Copywriter|Tell auditor)$/);
+  // Skip every card, then the board shows which desks still have notes open.
+  for (let i = 0; i < 8; i++) { const s = await page.$('#wz-task [data-action="skip"]'); if (!s) break; await s.click(); }
+  await page.click("#wz-finish");
+  const board = await page.$$eval(".wz-desk-row", (els) => els.map((e) => [e.querySelector(".wz-desk-name").textContent, e.classList.contains("is-signed")]));
+  assert.deepEqual(board.map((b) => b[0]), ["Structural editor", "Line editor", "Copy editor", "Fact-checker", "Copywriter", "Tell auditor"]);
+  assert.equal(board.find((b) => b[0] === "Fact-checker")[1], false, "the date is still wrong");
+  assert.match(await page.textContent("#wz-board-title"), /desks? ha(s|ve) notes open/);
+  assert.match(await page.textContent("#wz-final-note"), /Fact-checker, the day doesn't match the date/);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test("a clean rewrite gets every desk's sign-off", async () => {
+  const { page, context } = await open();
+  await toFix(page, "pyramid");
+  await page.fill("#wz-input", "Could we move the deck start from 11/14 to 11/21?");
+  await page.click('[data-action="apply"]');
+  await page.click("#wz-finish");
+  assert.equal(await page.textContent("#wz-board-title"), "Every desk signed off");
+  assert.equal(await page.locator(".wz-desk-row.is-signed").count(), 6);
+  await context.close();
 });

@@ -66,6 +66,8 @@
     el.style.height = el.scrollHeight + 2 + "px";
   }
   const plural = (n, one, many) => n + " " + (n === 1 ? one : many);
+  const desk = (key) => W.DESKS[key] || W.DESKS.structure;
+  const avatar = (key, extra) => '<span class="wz-avatar d-' + key + (extra ? " " + extra : "") + '" aria-hidden="true">' + desk(key).initials + "</span>";
   const CHECK_SVG = '<svg viewBox="0 0 24 24"><path d="M9.5 16.2L5.3 12l-1.4 1.4 5.6 5.6 11-11-1.4-1.4z"/></svg>';
   const CROSS_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 5L12 10.5 17.5 5 19 6.5 13.5 12l5.5 5.5-1.5 1.5-5.5-5.5L6.5 19 5 17.5 10.5 12 5 6.5z"/></svg>';
 
@@ -191,8 +193,9 @@
     sentencesEl.innerHTML = html;
 
     flagsEl.innerHTML = d.flags.map((f) =>
-      '<li class="wz-flag is-' + f.kind + '"><span class="wz-flag-icon" aria-hidden="true"></span><div>' +
-      '<p class="wz-flag-title"><span class="sr-only">' + (f.kind === "good" ? "Good: " : "To fix: ") + "</span>" + esc(f.title) + "</p>" +
+      '<li class="wz-flag is-' + f.kind + '">' + avatar(f.desk) + "<div>" +
+      '<p class="wz-flag-desk">' + esc(desk(f.desk).name) + (f.kind === "good" ? ' <span class="wz-flag-ok">Looks good</span>' : "") + "</p>" +
+      '<p class="wz-flag-title"><span class="sr-only">' + (f.kind === "good" ? "Looks good: " : "To fix: ") + "</span>" + esc(f.title) + "</p>" +
       '<p class="wz-flag-detail">' + esc(f.detail) + "</p>" +
       (f.quotes && f.quotes.length ? '<p class="wz-quotes ws-user">' + f.quotes.map((q) => "<q>" + esc(q) + "</q>").join(" ") + "</p>" : "") +
       "</div></li>").join("");
@@ -328,16 +331,19 @@
     const n = open.indexOf(card) + 1;
     const method = card.issues[0].method;
     let body = '<p class="wz-task-count">Fix ' + n + " of " + open.length + (note ? ' <span class="wz-task-note">' + esc(note) + "</span>" : "") + "</p>";
+    body += '<p class="wz-task-from">' + avatar(card.desk) + "<span>Note from the " + esc(desk(card.desk).name) + "</span></p>";
     body += '<div class="wz-task-head"><h4>' + esc(cardTitle(card)) + "</h4>" +
-      (method && method !== "audit" ? '<span class="slot-owner m-' + method + '">' + esc(W.METHOD_NAMES[method]) + "</span>" : "") + "</div>";
+      (method && method !== "audit" && method !== "polish" ? '<span class="slot-owner m-' + method + '">' + esc(W.METHOD_NAMES[method]) + "</span>" : "") + "</div>";
+    const mixed = card.issues.some((i) => i.desk !== card.desk);
     body += '<ul class="wz-issues">' + card.issues.map((i) =>
-      '<li><p class="wz-issue-title">' + esc(i.title) + (i.quotes && i.quotes.length ? ' <span class="ws-user">' + i.quotes.map((q) => "<q>" + esc(q) + "</q>").join(" ") + "</span>" : "") + "</p>" +
+      '<li class="d-line-' + i.desk + '">' + (mixed ? '<p class="wz-issue-desk">' + esc(desk(i.desk).name) + "</p>" : "") + '<p class="wz-issue-title">' + esc(i.title) + (i.quotes && i.quotes.length ? ' <span class="ws-user">' + i.quotes.map((q) => "<q>" + esc(q) + "</q>").join(" ") + "</span>" : "") + "</p>" +
       (i.detail ? '<p class="wz-issue-detail">' + esc(i.detail) + "</p>" : "") + "</li>").join("") + "</ul>";
 
     if (card.field === "groups") {
       body += groupsEditor("wz");
     } else if (card.field !== "general") {
-      const ex = cardExample(card);
+      // A structural note gets the slot's example; a copy or tone note doesn't need one.
+      const ex = card.issues.some((i) => i.desk === "structure") ? cardExample(card) : "";
       const empty = !String(card.value || "").trim();
       body += '<label class="wz-input-label" for="wz-input">' + (empty ? "Write it here" : "Edit it here") + "</label>" +
         '<textarea class="slot-input wz-input" id="wz-input" rows="3"' + (ex ? ' aria-describedby="wz-example"' : "") + "></textarea>";
@@ -615,8 +621,10 @@
     if (c.tells[0] > c.tells[1]) wins.push("Tells down from " + c.tells[0] + " to " + c.tells[1]);
     if (c.words[1] < c.words[0]) wins.push(c.words[0] + " words down to " + c.words[1] + ", " + Math.round(100 * (1 - c.words[1] / c.words[0])) + "% shorter");
     if (c.ratio && c.ratio[0] !== null && c.ratio[1] !== null && c.ratio[1] > c.ratio[0]) wins.push("Meaning ratio up from " + c.ratio[0] + "% to " + c.ratio[1] + "%");
+    if (c.polish && c.polish[0] > c.polish[1]) wins.push("Desk notes cleared: " + c.polish[0] + " down to " + c.polish[1]);
     const used = ["Pyramid"].concat(W.METHODS.filter((k) => state.methods[k]).map((k) => W.METHOD_NAMES[k]));
     wins.push("Shaped with " + used.join(" + "));
+    renderBoard();
     winsEl.innerHTML = wins.map((w) => '<li><span class="wz-win-icon" aria-hidden="true">' + CHECK_SVG + "</span><span>" + esc(w) + "</span></li>").join("");
 
     const asks = W.check(state, parsed).filter((x) => x.status === "self");
@@ -626,12 +634,29 @@
     allSet.hidden = true;
   }
 
+  // The sign-off board: each desk signs off when its checks pass.
+  function renderBoard() {
+    const board = W.deskReport(state, parsed);
+    const all = board.every((d) => d.signed);
+    $("wz-board-title").textContent = all ? "Every desk signed off" : plural(board.filter((d) => !d.signed).length, "desk has", "desks have") + " notes open";
+    $("wz-board").innerHTML = board.map((d) =>
+      '<li class="wz-desk-row ' + (d.signed ? "is-signed" : "is-open") + '">' + avatar(d.key) +
+      '<div><p class="wz-desk-name">' + esc(d.name) + "</p>" +
+      '<p class="wz-desk-status">' + (d.signed ? "Signed off" : esc(d.open[0]) + (d.open.length > 1 ? " (+" + (d.open.length - 1) + ")" : "")) + "</p></div>" +
+      '<span class="wz-desk-mark" aria-hidden="true">' + (d.signed ? CHECK_SVG : "") + "</span>" +
+      '<span class="sr-only">' + (d.signed ? "signed off" : "notes open") + "</span></li>").join("");
+  }
+
+  // The final text can still be edited, so every desk reads it again as you type.
   function noteFinal() {
     const r = TellScan.scan(finalEl.value, { wwb: state.methods.wwb });
-    const hits = r.findings.filter((f) => f.severity !== "weak");
+    const hits = r.findings.filter((f) => f.severity !== "weak").map((f) => ({ who: f.family === "WWB" ? "line" : "tells", label: f.label, match: f.match || "" }));
+    W.polishText(finalEl.value).forEach((f) => hits.push({ who: f.desk, label: f.label, match: f.match }));
     finalNote.innerHTML = hits.length
-      ? plural(hits.length, "phrase still reads", "phrases still read") + " as padded: " + hits.slice(0, 3).map((f) => '<q class="ws-user">' + esc(f.match || f.label) + "</q>").join(", ") + ". You can edit it right here."
-      : "No tells found. You can still edit it right here.";
+      ? "The desk has " + plural(hits.length, "note", "notes") + ": " + hits.slice(0, 3).map((h) =>
+        esc(desk(h.who).name) + ", " + esc(h.label.toLowerCase()) + (h.match.trim() ? ' <q class="ws-user">' + esc(h.match.trim()) + "</q>" : "")).join("; ") +
+        (hits.length > 3 ? "; and more" : "") + ". You can edit it right here."
+      : "Every desk reads it clean. You can still edit it right here.";
   }
   let finalTimer = 0;
   finalEl.addEventListener("input", () => { grow(finalEl); clearTimeout(finalTimer); finalTimer = setTimeout(noteFinal, 200); });

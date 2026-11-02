@@ -11,6 +11,19 @@ The workshop runs in four steps, one screen at a time:
 3. **Fix**: the rewrite appears at once, followed by one card per line that still needs a change, with a progress bar.
 4. **Send**: the finished message to copy, a list of what changed, and the method guides' "ask yourself" questions.
 
+Every draft also gets an editorial desk, modeled on how a publishing house edits. Six desks each sign their notes:
+
+| Desk | What it checks |
+|---|---|
+| Structural editor | The point comes first, and each picked method's shape and checklist |
+| Line editor | Long sentences, wordy phrases, double negatives, filler, stacked hedges, passive voice, sentences that all start the same way |
+| Copy editor | Doubled words and punctuation, restated sentences and phrases, a name spelled two ways, times, amounts or dates written two ways |
+| Fact-checker | A weekday that doesn't match its date ("Friday, 11/7" in 2026 is a Saturday), and dates that don't exist |
+| Copywriter | An opener that announces instead of saying, a recap ending, the cover test (a detail only this message has), and tone: shouting, extra exclamation points, over-apologizing, harsh or passive-aggressive lines |
+| Tell auditor | The skill's AI-tell scan |
+
+The desks are checks written to each role's standard, from the skill's craft guide and tell catalog, not people. Repeating the right word is never flagged on its own: the skill's guide calls that clarity.
+
 It uses no AI. Each method from the skill's guides becomes slots, an order and that guide's own checklist. The first pass sorts the visitor's own sentences into the slots and sets filler aside. Checks a rule can decide run automatically, like whether the point comes first or every number has a comparison. The rest are questions for the writer.
 
 ## What's here

@@ -133,6 +133,7 @@ The browser tests block requests to other hosts, so they don't need the network 
 The workshop's rules live in `assets/workshop-core.js`, and each one comes from the skill's method guides (`references/minto.md`, `references/methods.md` and `references/methods/*.md`). The page in `assets/workshop.js` only draws the four steps.
 
 - `recommend` picks methods for a draft, following section 3 of `references/methods.md`.
+- `polish` runs the desks' own passes (copy, line, copywriter, fact-checking) on any text. Each finding names its desk, and `deskReport` builds the sign-off board. Keep these to things a rule can decide reliably, and never flag a word just for being used often: the skill's guide treats repeating the right word as clarity.
 - `diagnose` writes the Review step's flags. `tasks` turns each failed check into a fix card tied to the line it's about, using the map of slots that `assemble` returns.
 
 - `slotCopy` holds each slot's label, hint and example. A method that owns a slot changes its label: the point becomes the Answer under SCQA, the Lede under Inverted Pyramid and the Big Idea under Storytelling with Data.

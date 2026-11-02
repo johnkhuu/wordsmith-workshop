@@ -24,7 +24,31 @@
   const METHOD_NAMES = {
     pyramid: "Pyramid", scqa: "SCQA", mece: "MECE", inverted: "Inverted Pyramid",
     wwb: "Writing Without Bullshit", data: "Storytelling with Data", audit: "Tell audit",
+    polish: "Clarity and tone",
   };
+  // The editorial desk: each check belongs to the role that would raise it in
+  // a publishing house. These are checks modeled on each role, not people.
+  const DESKS = {
+    structure: { name: "Structural editor", initials: "SE", job: "Puts the point first and gives the piece the right shape." },
+    line: { name: "Line editor", initials: "LE", job: "Keeps sentences clear and plain, with a rhythm that varies." },
+    copy: { name: "Copy editor", initials: "CE", job: "Catches doubled words, restated lines and anything written two ways." },
+    facts: { name: "Fact-checker", initials: "FC", job: "Checks that every day matches its date." },
+    copywriter: { name: "Copywriter", initials: "CW", job: "Makes the first line earn the second and the ending land, in the right tone." },
+    tells: { name: "Tell auditor", initials: "TA", job: "Makes sure nothing reads as machine-made." },
+  };
+  const DESK_ORDER = ["structure", "line", "copy", "facts", "copywriter", "tells"];
+  const POLISH_DESK = { P1: "copy", P2: "copy", P3: "copy", P4: "copy", P5: "line", P6: "line", P7: "line", P8: "line", P9: "copywriter", P10: "copy",
+    T1: "copywriter", T2: "copywriter", T3: "copywriter", T4: "line", T5: "copywriter", T6: "copywriter",
+    F1: "facts", K1: "copy", K2: "copy", K3: "copy", K4: "copy" };
+  function deskForCheck(c) {
+    if (c.desk) return c.desk;
+    if (c.id === "minto-close" || c.id === "wwb-subject" || c.id === "cover-test") return "copywriter";
+    if (c.id === "wwb-edit") return "line";
+    if (c.id === "tells") return "tells";
+    if (c.id === "draft-filler" || c.id === "draft-unused") return "line";
+    return "structure";
+  }
+
   // What each method does, in a line, for the method picker.
   const METHOD_JOBS = {
     pyramid: "Puts your point first, with the support under it.",
@@ -165,6 +189,7 @@
       const left = packaging ? wordCount(t.slice(0, packaging.start || 0) + " " + t.slice(packaging.end || t.length)) : 99;
       if (packaging && left < 5) filler = packaging.label;
       else if (mood) filler = "Mood, not a fact";
+      else if (wordCount(t) <= 4 && /^(?:quick question|just checking in|checking in|following up|just following up|a quick note|just a quick note|touching base|just touching base|quick update)\b/i.test(t)) filler = "Announces, says nothing";
     }
     return {
       ask, news, mood, specific,
@@ -761,6 +786,10 @@
     return { state: st, cuts };
   }
 
+  function frameParts(built) {
+    return built.parts.filter((p) => p.field === "greeting" || p.field === "signoff" || p.field === "subject").map((p) => [p.start, p.end]);
+  }
+
   function partAt(built, offset) {
     return built.parts.find((p) => offset >= p.start && offset < p.end) || null;
   }
@@ -881,7 +910,11 @@
   function check(st, parsed) {
     const m = st.methods;
     const out = [];
-    const add = (id, method, status, title, detail, quotes) => out.push({ id, method, status, title, detail: detail || "", quotes: quotes || [] });
+    const add = (id, method, status, title, detail, quotes, desk) => {
+      const item = { id, method, status, title, detail: detail || "", quotes: quotes || [] };
+      item.desk = desk || deskForCheck(item);
+      out.push(item);
+    };
     const built = assemble(st);
     const point = squash(st.point);
     const bodySentences = sentencesOf(built.body);
@@ -1046,12 +1079,327 @@
       if (!squash(st.close)) add("data-action", "data", "info", "End on the action", "What should they do with the numbers?");
     }
 
+    // The desks' own passes: always on.
+    const frame = frameParts(built);
+    const found = polish(built.text, frame);
+    const deskLine = (desk, id, title, ok) => {
+      const list = found.filter((f) => f.desk === desk);
+      if (list.length) add(id, "polish", "warn", title(list.length, list), list.map((f) => f.label).filter((v, i, a) => a.indexOf(v) === i).join(". ") + ".", list.map((f) => f.match.trim()).filter(Boolean), desk);
+      else if (wordCount(built.body)) add(id, "polish", "pass", ok, "", [], desk);
+    };
+    deskLine("copy", "copy-pass", (n) => n === 1 ? "One copy fix left" : n + " copy fixes left", "No doubled words, restated lines or mismatched spellings");
+    deskLine("line", "line-pass", (n) => n === 1 ? "One line to tighten" : n + " lines to tighten", "Clear, plain sentences");
+    deskLine("copywriter", "copywriter-pass", (n) => n === 1 ? "One spot could land wrong" : n + " spots could land wrong", "An even tone, and an opening that says something");
+    deskLine("facts", "facts-pass", (n) => n === 1 ? "A date doesn't check out" : n + " dates don't check out", "Every day matches its date");
+    // The cover test (craft.md): could this be anyone's message to anyone?
+    const bodyOnly = built.body;
+    const detail = RX.digit.test(bodyOnly) || RX.date.test(bodyOnly) || /(?<=\S\s)[A-Z][a-z]+/.test(bodyOnly);
+    if (wordCount(bodyOnly) > 12) {
+      if (detail) add("cover-test", "polish", "pass", "Has a detail only this message has", "", [], "copywriter");
+      else add("cover-test", "polish", "warn", "No detail only this message has", "Hide the names: could this be anyone's message? Add a name or a number so it couldn't be.", [], "copywriter");
+    }
+
     // The tell audit: always last.
     const t = tellCount(built.text, m.wwb);
     if (t.strong + t.moderate) add("tells", "audit", "warn", (t.strong + t.moderate) + (t.strong + t.moderate === 1 ? " tell left" : " tells left"), "Fix the highlighted phrases. Go back to the specific thing each one stood in for.");
     else if (wordCount(built.body)) add("tells", "audit", "pass", "No strong or moderate tells");
 
     return out;
+  }
+
+  // ---------------------------------------------------------------------
+  // Clarity and tone: repeats, plain words and the reader's ear
+  // ---------------------------------------------------------------------
+  //
+  // From the craft standard (references/craft.md): the second pass reads the
+  // first words of each sentence, cuts restatements, lets verbs work and
+  // commits instead of hedging, and the voice keeps one exclamation point.
+  // Repeating the right word is fine; ai-tells.md calls that clarity, so a
+  // word used often is never flagged on its own. Only doubled words, the
+  // same sentence or phrase twice, and the same opener again and again are.
+
+  const PLAIN_WORDS = [
+    [/\butiliz(?:e|es|ed|ing)\b/gi, "use"], [/\bcommenc(?:e|es|ed|ing)\b/gi, "start"],
+    [/\bin order to\b/gi, "to"], [/\bprior to\b/gi, "before"], [/\bsubsequent to\b/gi, "after"],
+    [/\bat this point in time\b|\bat the present time\b/gi, "now"], [/\bdue to the fact that\b/gi, "because"],
+    [/\bin the event that\b/gi, "if"], [/\bwith regards? to\b|\bin regards? to\b/gi, "about"],
+    [/\bin the near future\b/gi, "soon"], [/\b(?:was|were) able to\b/gi, "could, or just the verb"],
+    [/\bfor the purpose of\b/gi, "for"], [/\bin spite of the fact that\b/gi, "although"],
+    [/\bendeavou?r(?:s|ed)? to\b/gi, "try to"], [/\bfacilitat(?:e|es|ed|ing)\b/gi, "help"],
+    [/\bascertain\b/gi, "find out"], [/\bkindly\b/gi, "please"], [/\bat a later date\b/gi, "later"],
+  ];
+  const DOUBLE_NEGATIVE = /\b(?:not|n't|never)\s+(?:uncommon|unlike|unusual|unreasonable|unhappy|unimportant|insignificant|impossible|without|nothing|none|nobody|no)\b|\b(?:can|could)n't hardly\b/gi;
+  const ANNOUNCING = /^(?:quick question|just checking in|checking in|following up|just following up|a quick note|just a quick note|touching base|just touching base)\b/i;
+  const HEDGES = /\b(?:i think|i guess|i feel like|maybe|perhaps|possibly|kind of|sort of|a little|a bit|somewhat|just|might)\b/gi;
+  const HARSH = /\b(?:you need to|you must|immediately|asap|unacceptable|ridiculous|obviously|i shouldn'?t have to|for the last time|i demand)\b/gi;
+  const SNIPPY = /\b(?:per my (?:last|previous) (?:email|message|note)|as (?:i |previously )?(?:already )?(?:said|stated|mentioned)|friendly reminder|not sure if you saw|as you know)\b/gi;
+  const APOLOGY = /\b(?:sorry|apologi[sz]e|apologies)\b/gi;
+  const ACRONYMS = new Set(["ASAP", "RSVP", "HVAC", "NASA", "IKEA", "USPS", "FAQ", "HOA", "PDF", "DMV", "PTA", "LLC", "ATM", "PIN", "FYI", "TBD", "ETA", "NYC", "USA", "COVID", "HTML", "JPEG", "WIFI", "OK"]);
+  const KEEP_DOUBLE = new Set(["that", "had", "very", "really", "so", "no", "bye", "ha", "knock", "is"]);
+
+  // `mask` is a list of [start, end] ranges (greeting, sign-off) to leave out.
+  function polish(text, mask) {
+    const src = String(text || "");
+    let body = src;
+    for (const [a, b] of mask || []) body = body.slice(0, a) + " ".repeat(Math.max(0, b - a)) + body.slice(b);
+    const out = [];
+    const add = (code, kind, label, detail, start, end) => out.push({ code, kind, label, detail, match: src.slice(start, end), start, end });
+    let m;
+
+    // Repeats.
+    const dbl = /\b([A-Za-z]+)\s+\1\b/gi;
+    while ((m = dbl.exec(body))) {
+      if (KEEP_DOUBLE.has(m[1].toLowerCase()) && m[1].toLowerCase() !== "is") continue;
+      add("P1", "repeat", "Doubled word", "Delete the extra one.", m.index, m.index + m[0].length);
+    }
+    const punct = /([,;:?])\1+|(?<![.])\.\.(?![.])/g;
+    while ((m = punct.exec(body))) add("P2", "repeat", "Doubled punctuation", "Keep one.", m.index, m.index + m[0].length);
+
+    // Sentences, with where each one starts.
+    const sents = [];
+    const sre = /[^.!?\n]+(?:[.!?]+["'”’)]*|$)/g;
+    while ((m = sre.exec(body))) {
+      const t = m[0].trim();
+      if (wordCount(t) < 1) continue;
+      const lead = m[0].length - m[0].replace(/^\s+/, "").length;
+      sents.push({ text: t, start: m.index + lead, end: m.index + lead + t.length, n: wordCount(t) });
+      if (sre.lastIndex === m.index) sre.lastIndex += 1;
+    }
+    const restated = new Set();
+    for (let i = 0; i < sents.length; i++) {
+      for (let j = i + 1; j < sents.length; j++) {
+        if (keyStems(sents[i].text).size >= 3 && keyStems(sents[j].text).size >= 3 && overlap(sents[i].text, sents[j].text) >= 0.85) {
+          add("P3", "repeat", "Says the same thing twice", "Keep the stronger sentence and cut the other.", sents[j].start, sents[j].end);
+          restated.add(i); restated.add(j);
+        }
+      }
+    }
+    // The same four words twice, with real words in them (not "I would like to").
+    const toks = [];
+    const wre = /[A-Za-z0-9'’$]+/g;
+    while ((m = wre.exec(body))) toks.push({ w: m[0].toLowerCase().replace(/’/g, "'"), start: m.index, end: m.index + m[0].length });
+    const seenGram = new Map();
+    const flaggedGram = new Set();
+    let lastPhrase = null;
+    for (let i = 0; i + 4 <= toks.length; i++) {
+      const gram = toks.slice(i, i + 4);
+      if (gram.filter((t) => !STOP.has(t.w) && t.w.length > 2 && !/^\d/.test(t.w)).length < 2) continue;
+      const key = gram.map((t) => t.w).join(" ");
+      if (!seenGram.has(key)) { seenGram.set(key, i); continue; }
+      if (i - seenGram.get(key) < 4 || flaggedGram.has(key)) continue;
+      const inRestated = sents.some((s, k) => restated.has(k) && gram[0].start >= s.start && gram[3].end <= s.end);
+      if (inRestated) continue;
+      flaggedGram.add(key);
+      if (lastPhrase && gram[0].start <= lastPhrase.end) {
+        // The same repeat, one word longer: grow it instead of flagging again.
+        lastPhrase.end = gram[3].end;
+        lastPhrase.match = src.slice(lastPhrase.start, lastPhrase.end);
+        continue;
+      }
+      const lead = gram.find((t) => !STOP.has(t.w)) || gram[0];
+      add("P4", "repeat", "Repeated phrase", "If it's a restatement, say it once. Repeating the same word for the same thing is fine.", lead.start, gram[3].end);
+      lastPhrase = out[out.length - 1];
+    }
+    // Openers: the craft standard's "read only the first words of each sentence".
+    if (sents.length >= 3) {
+      const firsts = new Map();
+      sents.forEach((s) => {
+        const w = (s.text.match(/^[^A-Za-z]*([A-Za-z']+)/) || [])[1];
+        if (!w) return;
+        const k = w.toLowerCase();
+        if (!firsts.has(k)) firsts.set(k, []);
+        firsts.get(k).push(s);
+      });
+      for (const [w, list] of firsts) {
+        if (list.length >= 3 && list.length / sents.length >= 0.4) {
+          const third = list[2];
+          const word = third.text.match(/^[^A-Za-z]*([A-Za-z']+)/)[1];
+          add("P5", "repeat", list.length + " sentences start with “" + (w === "i" ? "I" : word) + "”", "Start one with the person or the thing instead.", third.start, third.start + third.text.indexOf(word) + word.length);
+        }
+      }
+    }
+
+    // Clarity.
+    for (const s of sents) {
+      if (s.n > 30) add("P6", "clarity", "Long sentence (" + s.n + " words)", "Split it where the second idea starts.", s.start, Math.min(s.end, s.start + 60));
+    }
+    for (const [re, plain] of PLAIN_WORDS) {
+      re.lastIndex = 0;
+      while ((m = re.exec(body))) add("P7", "clarity", "Wordy phrase", "Use the plain word: " + plain + ".", m.index, m.index + m[0].length);
+    }
+    DOUBLE_NEGATIVE.lastIndex = 0;
+    while ((m = DOUBLE_NEGATIVE.exec(body))) add("P8", "clarity", "Double negative", "Say it positively. Not “not uncommon” but “common”.", m.index, m.index + m[0].length);
+    if (sents.length && ANNOUNCING.test(sents[0].text)) {
+      add("P9", "clarity", "The first line announces instead of saying", "Lead with the question or the news itself.", sents[0].start, sents[0].start + sents[0].text.match(ANNOUNCING)[0].length);
+    }
+    const capitalized = /[.!?]\s+[A-Z]/.test(body) || /^[^a-z]*[A-Z]/.test(body.trim());
+    const lowerI = /(?<![\w'’])i(?=\s|['’](?:m|ll|ve|d)\b)/g;
+    if (capitalized) while ((m = lowerI.exec(body))) add("P10", "clarity", "Lowercase “i”", "Capitalize it.", m.index, m.index + 1);
+
+    // Tone.
+    const caps = /\b[A-Z]{4,}\b/g;
+    while ((m = caps.exec(body))) if (!ACRONYMS.has(m[0])) add("T1", "tone", "All caps reads as shouting", "Use normal case. A date or a number makes the point better.", m.index, m.index + m[0].length);
+    const bangs = /!{2,}|\?!|!\?/g;
+    while ((m = bangs.exec(body))) add("T1", "tone", "Stacked punctuation reads as shouting", "One mark is enough.", m.index, m.index + m[0].length);
+    const excl = [];
+    const ere = /!+/g;
+    while ((m = ere.exec(body))) excl.push(m.index);
+    if (excl.length >= 2) {
+      const at = excl[1];
+      add("T2", "tone", "More than one exclamation point", "One is plenty. Let the words carry the energy.", at, at + 1);
+    }
+    const sorry = [];
+    APOLOGY.lastIndex = 0;
+    while ((m = APOLOGY.exec(body))) sorry.push(m);
+    if (sorry.length >= 2) add("T3", "tone", "Apologizes more than it needs to", "Once is enough, and none if it isn't your fault.", sorry[1].index, sorry[1].index + sorry[1][0].length);
+    const hedges = [];
+    HEDGES.lastIndex = 0;
+    while ((m = HEDGES.exec(body))) hedges.push(m);
+    if (hedges.length >= 3) {
+      for (const h of hedges) add("T4", "tone", "Hedges pile up", "Commit. Keep a hedge that reports real doubt and cut the rest.", h.index, h.index + h[0].length);
+    }
+    HARSH.lastIndex = 0;
+    while ((m = HARSH.exec(body))) add("T5", "tone", "Could read as harsh", "Say what you need and by when, without the edge.", m.index, m.index + m[0].length);
+    SNIPPY.lastIndex = 0;
+    while ((m = SNIPPY.exec(body))) add("T6", "tone", "Could read as passive-aggressive", "Restate the ask plainly, as if for the first time.", m.index, m.index + m[0].length);
+
+    out.push(...consistency(body), ...factCheck(body, polish.today));
+    out.sort((a, b) => a.start - b.start);
+    out.forEach((f) => { f.desk = POLISH_DESK[f.code] || "copy"; });
+    return out;
+  }
+
+  // The fact-checker: a weekday next to a date has to be that date's weekday.
+  // Without a year, the date is read as the nearest one: this year's, unless
+  // that was more than six months ago.
+  const DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+  const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+  const DAY_RX = "(sun|mon|tues|wednes|thurs|fri|satur)day";
+  const MONTH_RX = "(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\.?";
+
+  function weekdayOf(y, m, d) {
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    if (dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) return null; // not a real date
+    return dt.getUTCDay();
+  }
+  function resolveYear(m, d, today) {
+    const y = today.getFullYear();
+    const thisYear = Date.UTC(y, m - 1, d);
+    const now = Date.UTC(y, today.getMonth(), today.getDate());
+    return thisYear < now - 183 * 864e5 ? y + 1 : y;
+  }
+
+  function factCheck(text, today) {
+    const src = String(text || "");
+    today = today || new Date();
+    const out = [];
+    const forms = [
+      [new RegExp("\\b" + DAY_RX + ",?\\s+(?:the\\s+)?(\\d{1,2})\\/(\\d{1,2})(?:\\/(\\d{2,4}))?\\b", "gi"), (m) => [m[1], +m[2], +m[3], m[4]]],
+      [new RegExp("\\b" + DAY_RX + ",?\\s+" + MONTH_RX + "\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s+(\\d{4}))?\\b", "gi"), (m) => [m[1], MONTHS.indexOf(m[2].slice(0, 3).toLowerCase()) + 1, +m[3], m[4]]],
+      [new RegExp("\\b(\\d{1,2})\\/(\\d{1,2})(?:\\/(\\d{2,4}))?\\s*\\(\\s*" + DAY_RX + "\\s*\\)", "gi"), (m) => [m[4], +m[1], +m[2], m[3]]],
+    ];
+    for (const [re, read] of forms) {
+      let m;
+      while ((m = re.exec(src))) {
+        const [dayWord, month, day, yearText] = read(m);
+        if (!month || !day) continue;
+        let year = yearText ? +yearText : resolveYear(month, day, today);
+        if (year < 100) year += 2000;
+        const wd = weekdayOf(year, month, day);
+        if (wd === null) {
+          out.push({ code: "F1", kind: "facts", label: "That date doesn't exist", detail: "Check the month and the day.", match: m[0], start: m.index, end: m.index + m[0].length });
+          continue;
+        }
+        const said = DAYS.findIndex((x) => x.startsWith(dayWord.toLowerCase()));
+        if (said !== wd) {
+          const actual = DAYS[wd].charAt(0).toUpperCase() + DAYS[wd].slice(1);
+          out.push({ code: "F1", kind: "facts", label: "The day doesn't match the date",
+            detail: "In " + year + ", " + month + "/" + day + " falls on a " + actual + ". Check which one you meant.",
+            match: m[0], start: m.index, end: m.index + m[0].length });
+        }
+      }
+    }
+    return out;
+  }
+
+  // The copy editor's consistency pass: one spelling, one style.
+  const COMMON_CAPS = new Set(["The", "This", "That", "These", "Those", "There", "Thanks", "Thank", "Hope", "Hi", "Hey", "Hello", "Dear", "Best",
+    "Well", "Will", "Can", "Could", "Would", "What", "When", "Where", "Who", "Why", "How", "Our", "Your", "Their", "Also", "And", "But", "So",
+    "Please", "Just", "Let", "Here", "Sorry", "Yes", "Not", "Now", "Then", "Love", "Cheers"]);
+  function editDistance1(a, b) {
+    if (a === b || Math.abs(a.length - b.length) > 1) return false;
+    let i = 0, j = 0, diffs = 0;
+    while (i < a.length && j < b.length) {
+      if (a[i] === b[j]) { i++; j++; continue; }
+      if (++diffs > 1) return false;
+      if (a.length > b.length) i++;
+      else if (b.length > a.length) j++;
+      else { i++; j++; }
+    }
+    return diffs + (a.length - i) + (b.length - j) === 1;
+  }
+
+  function consistency(text) {
+    const src = String(text || "");
+    const out = [];
+    const names = namesIn(src);
+    const caps = new Map();
+    let m;
+    const cre = /\b[A-Z][a-z]{2,}\b/g;
+    while ((m = cre.exec(src))) {
+      const w = m[0];
+      if (COMMON_CAPS.has(w) || DAYS.includes(w.toLowerCase()) || MONTHS.some((x) => w.toLowerCase().startsWith(x))) continue;
+      if (!caps.has(w)) caps.set(w, m.index);
+    }
+    const list = Array.from(caps.keys());
+    const done = new Set();
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length; j++) {
+        const a = list[i], b = list[j];
+        if (a[0] !== b[0] || Math.min(a.length, b.length) < 4 || !editDistance1(a, b)) continue;
+        if (!names.has(a) && !names.has(b)) continue;
+        const key = [a, b].sort().join("/");
+        if (done.has(key)) continue;
+        done.add(key);
+        const at = caps.get(b);
+        out.push({ code: "K1", kind: "repeat", label: "A name spelled two ways", detail: a + " and " + b + ". Pick one.", match: b, start: at, end: at + b.length });
+      }
+    }
+    const styles = (patterns, code, label) => {
+      const found = [];
+      patterns.forEach((re, k) => { re.lastIndex = 0; let x; while ((x = re.exec(src))) found.push({ k, x }); });
+      const kinds = new Set(found.map((f) => f.k));
+      if (kinds.size > 1) {
+        const second = found.find((f) => f.k !== found[0].k);
+        out.push({ code, kind: "repeat", label, detail: "Pick one style and use it throughout.", match: second.x[0], start: second.x.index, end: second.x.index + second.x[0].length });
+      }
+    };
+    styles([/\b\d{1,2}(?::\d{2})?\s?(?:am|pm)\b/g, /\b\d{1,2}(?::\d{2})?\s?(?:a\.m\.|p\.m\.)/g, /\b\d{1,2}(?::\d{2})?\s?(?:AM|PM)\b/g], "K2", "Times written two ways");
+    styles([/\$\d{1,3}(?:,\d{3})+(?:\.\d+)?\b/g, /\$\d{4,}(?:\.\d+)?\b/g], "K3", "Amounts written two ways");
+    styles([/\b\d{1,2}\/\d{1,2}\b/g, new RegExp("\\b" + MONTH_RX + "\\s+\\d{1,2}(?:st|nd|rd|th)?\\b", "gi")], "K4", "Dates written two ways");
+    return out;
+  }
+
+  // The parts of a draft or a final message that are the writer's own frame.
+  function frameMask(text) {
+    const src = String(text || "");
+    const p = parseDraft(src);
+    const mask = [];
+    const sub = /^\s*subject:.*$/im.exec(src);
+    if (sub && sub.index < 3) mask.push([sub.index, sub.index + sub[0].length]);
+    if (p.greeting) { const at = src.indexOf(p.greeting); if (at >= 0) mask.push([at, at + p.greeting.length]); }
+    if (p.signoff) { const at = src.lastIndexOf(p.signoff); if (at >= 0) mask.push([at, at + p.signoff.length]); }
+    return mask;
+  }
+
+  function polishText(text) {
+    return polish(text, frameMask(text));
+  }
+
+  function polishSummary(found) {
+    const by = { repeat: [], clarity: [], tone: [], facts: [] };
+    found.forEach((f) => by[f.kind].push(f));
+    return by;
   }
 
   // ---------------------------------------------------------------------
@@ -1109,10 +1457,23 @@
     }
     const n = wordCount(text);
     if (n > 250) flags.push({ id: "long", kind: "fix", title: "It runs " + n + " words", detail: "Most personal email works best well under 250.", pieces: [] });
-    if (!flags.length) flags.push({ id: "clean", kind: "good", title: "This draft already leads with its point", detail: "The rewrite tidies the structure, and the checks confirm it.", pieces: [] });
+    const found = polishText(text);
+    const sample = (list) => Array.from(new Set(list.map((f) => f.match.trim()).filter(Boolean))).slice(0, 4);
+    const labels = (list) => list.map((f) => f.label.replace(/ \(\d+ words\)/, "")).filter((v, i, a) => a.indexOf(v) === i).join(". ") + ".";
+    const deskFlag = (desk, id, title) => {
+      const list = found.filter((f) => f.desk === desk);
+      if (list.length) flags.push({ id, kind: "fix", desk, title: title(list.length), detail: labels(list), pieces: [], quotes: sample(list) });
+    };
+    deskFlag("facts", "facts", (n) => n === 1 ? "A date doesn't check out" : n + " dates don't check out");
+    deskFlag("copy", "copy", (n) => n === 1 ? "One copy fix" : n + " copy fixes");
+    deskFlag("line", "line", (n) => n === 1 ? "One line to tighten" : n + " lines to tighten");
+    deskFlag("copywriter", "copywriter", (n) => n === 1 ? "One spot could land wrong" : n + " spots could land wrong");
+    const DIAG_DESK = { buried: "structure", "no-point": "structure", vague: "structure", list: "structure", repeat: "structure", "no-change": "structure", "vague-amount": "structure", long: "structure", filler: "line", tells: "tells" };
+    flags.forEach((f) => { if (!f.desk) f.desk = DIAG_DESK[f.id] || "structure"; });
+    if (!flags.length) flags.push({ id: "clean", kind: "good", desk: "structure", title: "This draft already leads with its point", detail: "The rewrite tidies the structure, and the checks confirm it.", pieces: [] });
     if (parsed.greeting || parsed.signoff) {
       const what = parsed.greeting && parsed.signoff ? "Your greeting and sign-off stay" : parsed.greeting ? "Your greeting stays" : "Your sign-off stays";
-      flags.push({ id: "voice", kind: "good", title: what + " as you wrote " + (parsed.greeting && parsed.signoff ? "them" : "it"), detail: "That's your voice, so the rewrite keeps it.", pieces: [] });
+      flags.push({ id: "voice", kind: "good", desk: "copywriter", title: what + " as you wrote " + (parsed.greeting && parsed.signoff ? "them" : "it"), detail: "That's your voice, so the rewrite keeps it.", pieces: [] });
     }
     return { flags, pointId: point ? point.id : null };
   }
@@ -1125,7 +1486,7 @@
     "minto-point": "point", "minto-one": "point", "minto-specific": "point", "minto-length": "point",
     "inv-lede": "point", "inv-when": "point", "inv-buildup": "point", "data-big-idea": "point",
     "scqa-situation": "situation", "scqa-complication": "complication", "scqa-length": "point",
-    "minto-close": "close", "wwb-subject": "subject",
+    "minto-close": "close", "wwb-subject": "subject", "cover-test": "point",
     "mece-rule": "groups", "mece-count": "groups", "mece-labels": "groups", "mece-overlap": "groups",
   };
   const FIELD_ORDER = ["point", "situation", "complication", "groups", "group-items", "group-label", "support", "background", "close", "subject", "general"];
@@ -1142,7 +1503,7 @@
     const checks = check(st, parsed).filter((c) => c.status === "warn");
     for (const c of checks) {
       const field = CARD_FOR_CHECK[c.id];
-      if (field) card(field, 0).issues.push({ title: c.title, detail: c.detail, quotes: c.quotes, method: c.method });
+      if (field) card(field, 0).issues.push({ title: c.title, detail: c.detail, quotes: c.quotes, method: c.method, desk: c.desk });
     }
     // Phrase-level problems: trace each one to the line that holds it.
     const locate = (offset) => partAt(built, offset);
@@ -1150,28 +1511,37 @@
       if (!part || part.field === "greeting" || part.field === "signoff") return;
       if (part.field === "subject" && !st.isEmail) return;
       const c = card(part.field, part.index);
-      if (!c.issues.some((x) => x.title === issue.title && String(x.quotes) === String(issue.quotes))) c.issues.push(issue);
+      const same = c.issues.find((x) => x.title === issue.title && x.desk === issue.desk);
+      if (same) (issue.quotes || []).forEach((q) => { if (!same.quotes.includes(q)) same.quotes.push(q); });
+      else c.issues.push(Object.assign({}, issue, { quotes: (issue.quotes || []).slice() }));
     };
     const scanned = TellScan.scan(built.text, { wwb: st.methods.wwb });
     for (const f of scanned.findings) {
       if (f.severity === "weak") continue;
-      const issue = { title: f.label, detail: plainFix(f), quotes: f.match ? [f.match.trim()] : [], method: f.family === "WWB" ? "wwb" : "audit" };
+      const issue = { title: f.label, detail: plainFix(f), quotes: f.match ? [f.match.trim()] : [], method: f.family === "WWB" ? "wwb" : "audit", desk: f.family === "WWB" ? "line" : "tells" };
       if (typeof f.start === "number") put(locate(f.start), issue);
       else if (f.spans && f.spans.length) put(locate(f.spans[0].start), issue);
-      else if (f.code !== "W5") card("general", 0).issues.push(issue);
+      else if (f.code !== "W5") card("general", 0).issues.push(Object.assign(issue, { desk: "line" }));
+    }
+    for (const f of polish(built.text, frameParts(built))) {
+      put(locate(f.start), { title: f.label, detail: f.detail, quotes: f.match.trim() ? [f.match.trim()] : [], method: "polish", desk: f.desk });
     }
     if (st.methods.data) {
       const vague = new RegExp(VAGUE_AMOUNT.source, "gi");
       let m;
       while ((m = vague.exec(built.text))) {
-        put(locate(m.index), { title: "Vague amount", detail: "Swap it for the number, with a comparison.", quotes: [m[0]], method: "data" });
+        put(locate(m.index), { title: "Vague amount", detail: "Swap it for the number, with a comparison.", quotes: [m[0]], method: "data", desk: "structure" });
       }
       for (const s of bareNumbers(sentencesOf(built.body))) {
         const at = built.text.indexOf(s);
-        if (at >= 0) put(locate(at), { title: "A number with nothing to compare it to", detail: "Add what it's up or down from, or what it's worth in real terms.", quotes: [s.match(MONEY_OR_AMOUNT)[0]], method: "data" });
+        if (at >= 0) put(locate(at), { title: "A number with nothing to compare it to", detail: "Add what it's up or down from, or what it's worth in real terms.", quotes: [s.match(MONEY_OR_AMOUNT)[0]], method: "data", desk: "structure" });
       }
     }
     const list = Array.from(cards.values()).filter((c) => c.issues.length);
+    for (const c of list) {
+      c.issues.forEach((i) => { if (!i.desk) i.desk = "structure"; });
+      c.desk = c.issues[0].desk;
+    }
     list.sort((a, b) => (FIELD_ORDER.indexOf(a.field) - FIELD_ORDER.indexOf(b.field)) || (a.index - b.index));
     for (const c of list) c.value = fieldValue(st, c.field, c.index);
     return list;
@@ -1189,6 +1559,15 @@
     else if (field === "group-items") st.groups[index].items = value;
     else if (field !== "groups" && field !== "general") st[field] = value;
     return st;
+  }
+
+  // The sign-off board: each desk signs off when none of its checks fail.
+  function deskReport(st, parsed) {
+    const warns = check(st, parsed).filter((c) => c.status === "warn");
+    return DESK_ORDER.map((key) => {
+      const open = warns.filter((c) => c.desk === key);
+      return { key, name: DESKS[key].name, initials: DESKS[key].initials, job: DESKS[key].job, signed: !open.length, open: open.map((c) => c.title) };
+    });
   }
 
   // Before and after numbers for the finish line.
@@ -1214,6 +1593,7 @@
       pointTo,
       filler,
       cuts: built.cuts.length,
+      polish: [polishText(draftText).length, polish(built.text, frameParts(built)).length],
     };
   }
 
@@ -1248,11 +1628,11 @@
   }
 
   const api = {
-    METHODS, METHOD_NAMES, METHOD_JOBS, EXAMPLES, TRIMS,
+    METHODS, METHOD_NAMES, METHOD_JOBS, EXAMPLES, TRIMS, DESKS, DESK_ORDER, deskReport, factCheck, consistency,
     words, wordCount, splitSentences, splitClauses, parseDraft, describe, listItems, isCloser,
     emptyState, methodsFrom, recommend, suggest, switchMethod, usedPieces,
     applyTrims, bakeTrims, assemble, partAt, meaningRatio, tellCount, plainFix, check, diagnose, tasks, fieldValue, setField,
-    compare, slotCopy, overlap,
+    compare, slotCopy, overlap, polish, polishText, polishSummary, frameMask,
   };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.WorkshopCore = api;

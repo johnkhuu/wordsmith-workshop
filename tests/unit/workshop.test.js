@@ -205,7 +205,7 @@ test("each 'before' example gets the coaching its method is for", () => {
     scqa: ["scqa-situation", "scqa-complication"],
     mece: ["minto-point", "mece-rule", "mece-count", "mece-overlap"],
     wwb: ["minto-specific", "wwb-edit", "tells"],
-    data: ["data-big-idea", "data-vague"],
+    data: ["data-big-idea", "data-vague", "cover-test"],
   };
   for (const [key, want] of Object.entries(expected)) {
     const { st, parsed } = firstPass(key);
@@ -237,10 +237,10 @@ test("numbers without a comparison, and precise figures, are flagged", () => {
   assert.ok(all.some((c) => c.id === "data-round"));
 });
 
-test("checks are only those of the methods picked", () => {
+test("checks are only those of the methods picked, plus the desks' own passes", () => {
   const st = state({ point: "We're moving to Denver on 3/22." });
   const methodsSeen = new Set(W.check(st, null).map((c) => c.method));
-  assert.deepEqual([...methodsSeen].sort(), ["audit", "pyramid"]);
+  assert.deepEqual([...methodsSeen].sort(), ["audit", "polish", "pyramid"]);
   assert.ok(!ids(st, null).some((id) => /^(scqa|mece|inv|wwb|data)-/.test(id)));
 });
 
@@ -414,4 +414,105 @@ test("the ask pattern stays fast on long runs of spaces", () => {
   const t0 = Date.now();
   W.describe("Can you?" + " ".repeat(30000) + "x");
   assert.ok(Date.now() - t0 < 200, (Date.now() - t0) + "ms");
+});
+
+// ---------------------------------------------------------------------------
+// The editorial desk: copy, line, copywriter and fact-checking passes
+
+const at = (text) => W.polish(text).map((f) => f.code + " " + f.desk + " " + f.match.trim());
+W.polish.today = new Date(2026, 10, 2); // 2 Nov 2026, so the date checks don't drift
+
+test("the copy editor catches doubled words, doubled punctuation and restated lines", () => {
+  assert.deepEqual(at("Can the the plumber come Friday,, at 9?"), ["P1 copy the the", "P2 copy ,,"]);
+  assert.deepEqual(at("The deck start is on the 14th. The deck start is on the 14th, right."), ["P3 copy The deck start is on the 14th, right."]);
+  assert.deepEqual(at("We booked the cabin by the lake for Saturday. Later we booked the cabin by the lake again."), ["P4 copy booked the cabin by the lake"]);
+  assert.deepEqual(at("I had had enough. That that was it."), [], "real doubles aren't flagged");
+});
+
+test("repeating the right word is fine; only restatements and samey openers are flagged", () => {
+  assert.deepEqual(at("The deck needs stain. Mark can stain the deck Friday. The stain is in the garage."), []);
+  assert.deepEqual(at("I called Monday. I left a note. I sent a text. Could you reply?").map((x) => x.split(" ").slice(0, 2).join(" ")), ["P5 line"]);
+});
+
+test("the copy editor wants one spelling and one style throughout", () => {
+  assert.deepEqual(at("Dana will bring wine on Saturday, and Dena will bring dessert."), ["K1 copy Dena"]);
+  assert.deepEqual(at("Dinner at 7pm, dessert at 8 p.m."), ["K2 copy 8 p.m."]);
+  assert.deepEqual(at("The quote was $1,800 and the bill was $1950."), ["K3 copy $1950"]);
+});
+
+test("the line editor flags long sentences, wordy phrases, double negatives and stacked hedges", () => {
+  assert.deepEqual(at("In order to help, it is not uncommon for us to call prior to the visit.").map((x) => x.split(" ")[0]), ["P7", "P8", "P7"]);
+  const long = "We wanted to let you know that the plans for the weekend have changed because the cabin we booked had a pipe burst and the owner cannot fix it until the following Tuesday at the earliest.";
+  assert.match(at(long)[0], /^P6 line/);
+  assert.equal(at("I think it might be a bit late, maybe.").filter((x) => x.startsWith("T4")).length, 4);
+  assert.deepEqual(at("I think it's late."), [], "one honest hedge is fine");
+});
+
+test("the copywriter flags shouting, extra exclamation points, harsh lines and announcing openers", () => {
+  const codes = (t) => W.polish(t).map((f) => f.code);
+  assert.deepEqual(codes("Quick question: can you send it?"), ["P9"]);
+  assert.deepEqual(codes("We need this FIXED now."), ["T1"]);
+  assert.deepEqual(codes("Great news!! We're moving!"), ["T1", "T2"]);
+  assert.deepEqual(codes("Sorry, so sorry for the late notice."), ["T3"]);
+  assert.deepEqual(codes("Per my last email, you need to refund it."), ["T6", "T5"]);
+  assert.deepEqual(codes("Our RSVP and the HVAC quote are attached."), [], "acronyms aren't shouting");
+});
+
+test("the fact-checker checks every weekday against its date", () => {
+  const facts = (t) => W.factCheck(t, new Date(2026, 10, 2)).map((f) => f.detail);
+  assert.deepEqual(facts("Could you send it by Friday, 11/7?"), ["In 2026, 11/7 falls on a Saturday. Check which one you meant."]);
+  assert.deepEqual(facts("Please refund it by Friday, 9/18."), []);
+  assert.deepEqual(facts("Dinner is Saturday, November 14."), []);
+  assert.deepEqual(facts("Dinner is Friday, November 14, 2026."), ["In 2026, 11/14 falls on a Saturday. Check which one you meant."]);
+  assert.deepEqual(facts("See you 3/2 (Tuesday)."), [], "3/2/2027 is a Tuesday: an old date reads as next year's");
+  assert.deepEqual(W.factCheck("Meet 2/30 (Monday).", new Date(2026, 10, 2)).map((f) => f.label), ["That date doesn't exist"]);
+});
+
+test("every desk has a lane, and the sign-off board reports each one", () => {
+  assert.deepEqual(W.DESK_ORDER, ["structure", "line", "copy", "facts", "copywriter", "tells"]);
+  const inv = firstPass("inverted");
+  assert.ok(W.deskReport(inv.st, inv.parsed).every((d) => d.signed), "the inverted example passes every desk");
+  const wwb = firstPass("wwb");
+  const board = Object.fromEntries(W.deskReport(wwb.st, wwb.parsed).map((d) => [d.key, d.signed]));
+  assert.deepEqual(board, { structure: false, line: false, copy: true, facts: true, copywriter: true, tells: false });
+});
+
+test("fix cards and review flags say which desk raised them", () => {
+  const { st, parsed } = firstPass("wwb");
+  const cards = W.tasks(st, parsed);
+  assert.deepEqual(cards.map((c) => c.desk), ["structure", "line"]);
+  assert.deepEqual(cards[0].issues.map((i) => i.desk), ["structure", "line"]);
+  const d = W.diagnose(W.EXAMPLES.pyramid.text, W.parseDraft(W.EXAMPLES.pyramid.text), W.methodsFrom([]));
+  assert.deepEqual(d.flags.map((f) => f.desk), ["structure", "line", "structure", "tells", "copywriter"]);
+  const draft = "Hi Sam,\n\nCould you come Friday, 11/7 at 7pm? Dana and Dena will be there at 8 p.m.\n\nThanks,\nJo";
+  const flags = W.diagnose(draft, W.parseDraft(draft), W.methodsFrom([])).flags.map((f) => f.id + ":" + f.desk);
+  assert.ok(flags.includes("facts:facts") && flags.includes("copy:copy"), flags.join(" "));
+});
+
+test("the cover test asks for a detail only this message could have", () => {
+  const vague = state({ point: "Thank you so much for everything you have done for us over the past few months." });
+  assert.ok(W.check(vague, null).some((c) => c.id === "cover-test" && c.status === "warn"));
+  const specific = state({ point: "Thank you for watching Biscuit while we were away in Denver last week." });
+  assert.ok(W.check(specific, null).some((c) => c.id === "cover-test" && c.status === "pass"));
+});
+
+test("the skill's own 'after' examples pass every desk", () => {
+  const afters = [
+    "Hi Mark,\n\nCould we move the deck start from 11/14 to 11/21? My in-laws are staying with us that week and the yard will be full.\n\nAnything from 11/21 through 11/30 works for us.\n\nThanks!",
+    "Thanksgiving is usually at Mom's, but her kitchen won't be finished until January. So this year it's at our place, same time: 2pm on the 26th.",
+    "We're moving to Milwaukee on March 15. We signed the lease Saturday: a two-bedroom ten minutes from Tara's new job. Visitors welcome from April.",
+    "You charged my card twice for invoice #4471 ($185 on 9/12). Please refund the duplicate by Friday, 9/18.",
+    "The new plan saves us $34 a month: $61 instead of $95. That's $408 a year, about one flight home.",
+  ];
+  for (const t of afters) assert.deepEqual(W.polishText(t).map((f) => f.code + " " + f.match), [], t);
+});
+
+test("a bare 'Quick question.' is filler, and one line's hedges make one note", () => {
+  const t = "Quick question. I think it might be a bit late, maybe. Could you bring the dessert on 11/14?";
+  const p = W.parseDraft(t);
+  assert.equal(p.pieces[0].flags.filler, "Announces, says nothing");
+  const st = W.bakeTrims(W.suggest(p, W.methodsFrom([]))).state;
+  const hedges = W.tasks(st, p).flatMap((c) => c.issues).filter((i) => i.title === "Hedges pile up");
+  assert.equal(hedges.length, 1);
+  assert.deepEqual(hedges[0].quotes, ["I think", "might", "a bit", "maybe"]);
 });
