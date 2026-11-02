@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wordsmith Workshop</title>
+<meta name="description" content="A Claude skill for personal writing. It builds every piece on Minto's pyramid, then scans it for the patterns that make writing read like a chatbot wrote it.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%232450C0'/%3E%3Cpath d='M14 18h9l5 20 4-14h4l4 14 5-20h5l-8 30h-5l-5-16-5 16h-5z' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Courier+Prime:wght@400;700&family=Gloock&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<header class="site-head">
+  <div class="wrap head-row">
+    <a class="brand" href="#top">Wordsmith Workshop</a>
+    <nav class="site-nav" aria-label="Sections">
+      <a href="#how">How it works</a>
+      <a href="#scanner">Scanner</a>
+      <a href="#methods">Methods</a>
+      <a href="#formats">Formats</a>
+      <a href="#craft">Craft</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+  <section class="hero">
+    <div class="wrap">
+      <p class="eyebrow">A Claude skill for personal writing</p>
+      <h1>Lead with the point. Back it with real details.</h1>
+      <p class="lede">Wordsmith Workshop drafts and audits the writing you send as yourself: a note to the contractor, a complaint to the airline, a toast, a card. Every piece starts from Minto's pyramid, and the skill scans every draft for the patterns that make writing read like a chatbot wrote it.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#scanner">Scan a draft</a>
+        <a class="btn btn-ghost" href="#how">See how it works</a>
+      </div>
+
+      <div class="sheets">
+        <figure class="sheet sheet-before">
+          <figcaption class="sheet-tag">Before</figcaption>
+          <div class="sheet-body">
+            <p>Hi Mark, <del>I hope you're doing well. I wanted to reach out because things have been a bit hectic on our end lately and our schedule has been unpredictable.</del> <del>Last week we talked about the deck repair starting on the 14th, and that could still work, but</del> my in-laws are visiting that week and the backyard will be pretty busy. <span class="circled">Would it be possible to push it back?</span></p>
+          </div>
+          <p class="margin-note">The ask is sentence four. Lead with it, and give a date.</p>
+        </figure>
+        <figure class="sheet sheet-after">
+          <figcaption class="sheet-tag">After</figcaption>
+          <div class="sheet-body">
+            <p>Hi Mark,</p>
+            <p><mark class="lead-line">Could we move the deck start from 11/14 to 11/21?</mark> My in-laws are staying with us that week and the yard will be full.</p>
+            <p>Anything from 11/21 through 11/30 is wide open, so pick whatever start date works best for you.</p>
+            <p>Thanks!</p>
+          </div>
+        </figure>
+      </div>
+      <p class="sheets-caption">The ask moved from sentence four to sentence one. The vague context went, a fact that makes yes easy came in, and the email got about a third shorter.</p>
+    </div>
+  </section>
+
+  <section class="band" id="how" aria-labelledby="how-title">
+    <div class="wrap split">
+      <header class="section-head">
+        <p class="eyebrow">How it works</p>
+        <h2 id="how-title">Five layers, always in this order</h2>
+        <p>A buried point can't be fixed with line edits, so structure comes first. Tells come last. Most of them disappear once the structure is right and the details are specific, and the audit catches the rest.</p>
+      </header>
+      <ol class="layers">
+        <li>
+          <span class="layer-n" aria-hidden="true">1</span>
+          <div>
+            <h3>Structure <span class="tag">Always on</span></h3>
+            <p>Barbara Minto's Pyramid Principle. The skill settles the governing thought and the points under it before writing any prose.</p>
+          </div>
+        </li>
+        <li>
+          <span class="layer-n" aria-hidden="true">2</span>
+          <div>
+            <h3>Methods <span class="tag">You pick</span></h3>
+            <p>Up to five extra methods per piece. Each one controls a different part of the writing, so they stack without making it longer.</p>
+          </div>
+        </li>
+        <li>
+          <span class="layer-n" aria-hidden="true">3</span>
+          <div>
+            <h3>Format <span class="tag">Inferred</span></h3>
+            <p>Standard, Brief, Persuade, Story or Letter, chosen from the request and named at the end so you can switch.</p>
+          </div>
+        </li>
+        <li>
+          <span class="layer-n" aria-hidden="true">4</span>
+          <div>
+            <h3>Craft and voice <span class="tag">Your voice</span></h3>
+            <p>Ten habits of a strong copywriter, applied in your own voice. Your greetings and sign-offs stay, even when a generic rule would cut them.</p>
+          </div>
+        </li>
+        <li>
+          <span class="layer-n" aria-hidden="true">5</span>
+          <div>
+            <h3>Audit <span class="tag">Scan + judgment</span></h3>
+            <p>A pattern scan for AI tells, then a sentence-by-sentence read. The skill fixes every strong and moderate hit before you see the draft.</p>
+          </div>
+        </li>
+      </ol>
+    </div>
+
+    <div class="wrap modes">
+      <div class="mode">
+        <h3>Draft</h3>
+        <p>Ask it to write something or reply to something. It asks which methods to use, builds the piece, audits its own draft and hands it back ready to copy, with a two-line note naming the methods and format it used.</p>
+      </div>
+      <div class="mode">
+        <h3>Audit</h3>
+        <p>Paste a draft and ask whether it sounds like AI. You get a verdict, the structural problems, each tell with its fix, and a rewrite in your voice if the text is yours.</p>
+      </div>
+      <div class="mode mode-prompts">
+        <h3>Things to ask it</h3>
+        <ul class="prompts">
+          <li>Draft a note asking our contractor to push the deck start to 11/21.</li>
+          <li>Write a two-minute toast for my sister's wedding.</li>
+          <li>Does this complaint to the airline sound like AI?</li>
+          <li>What methods do you have?</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="band band-tool" id="scanner" aria-labelledby="scanner-title">
+    <div class="wrap">
+      <header class="section-head section-head-wide">
+        <p class="eyebrow">Layer 5, on its own</p>
+        <h2 id="scanner-title">Scan a draft for AI tells</h2>
+        <p>This is the skill's pattern scanner, rebuilt to run in your browser. Paste a draft and it marks the phrases that make writing sound machine-made, with a fix for each one. Nothing you type leaves this page.</p>
+      </header>
+
+      <div class="scan-controls">
+        <div class="samples" role="group" aria-label="Load a sample">
+          <span class="controls-label">Sample</span>
+          <button type="button" class="chip" id="load-before" aria-pressed="true">Thank-you note, before</button>
+          <button type="button" class="chip" id="load-after" aria-pressed="false">Same note, after</button>
+          <button type="button" class="chip chip-quiet" id="clear-text">Clear</button>
+        </div>
+        <label class="toggle" for="wwb">
+          <input type="checkbox" id="wwb">
+          <span>Add Writing Without Bullshit checks</span>
+        </label>
+      </div>
+
+      <div class="scan-grid">
+        <div class="pane pane-text">
+          <label class="pane-label" for="scan-input">Your text</label>
+          <div class="manuscript">
+            <div class="manuscript-backdrop" id="scan-backdrop" aria-hidden="true"></div>
+            <textarea id="scan-input" spellcheck="false" autocomplete="off" placeholder="Paste an email, a text, a toast or a card."></textarea>
+          </div>
+        </div>
+        <div class="pane pane-report">
+          <p class="pane-label">Report</p>
+          <div class="summary">
+            <div id="tally" class="tally"></div>
+            <p id="verdict" class="verdict" aria-live="polite"></p>
+            <dl id="stats" class="stats"></dl>
+          </div>
+          <div id="findings" class="findings"></div>
+        </div>
+      </div>
+
+      <div class="families">
+        <div class="family">
+          <h3>Inflation</h3>
+          <p>Insisting something is important instead of showing it. <q>Stands as a testament to</q>, <q>a vibrant community</q>.</p>
+        </div>
+        <div class="family">
+          <h3>Vagueness</h3>
+          <p>Gesturing at meaning without a claim. <q>Experts say</q>, a sentence that ends in <q>highlighting</q> something.</p>
+        </div>
+        <div class="family">
+          <h3>Mechanical rhythm</h3>
+          <p>Patterns a reader feels before they can name them. <q>It's not X, it's Y</q>, em dashes, sentences all the same length.</p>
+        </div>
+        <div class="family">
+          <h3>Packaging</h3>
+          <p>Formatting that looks like a chatbot answer. <q>I hope this message finds you well</q>, <q>In summary</q>, bold labels.</p>
+        </div>
+      </div>
+
+      <blockquote class="master-test">
+        <p>The scanner sees patterns, not meaning. After a clean scan, ask of every sentence: could it appear, unchanged, in a thousand other people's version of this piece? If yes, replace it with something only yours could say.</p>
+      </blockquote>
+    </div>
+  </section>
+
+  <section class="band" id="methods" aria-labelledby="methods-title">
+    <div class="wrap">
+      <header class="section-head section-head-wide">
+        <p class="eyebrow">Methods</p>
+        <h2 id="methods-title">Five methods that sit on the pyramid</h2>
+        <p>You pick the methods for each piece. Each one owns a single job (the opening, the grouping, the order, the edit or the numbers), which is why they stack. A piece built with four methods should be no longer than one built with Minto alone.</p>
+      </header>
+
+      <div class="method method-base">
+        <div class="method-name">
+          <h3>Pyramid Principle</h3>
+          <p class="source">Barbara Minto</p>
+          <span class="tag">Always on</span>
+        </div>
+        <div>
+          <p class="mini-label">What it does</p>
+          <p>One governing thought, written before anything else. Under it, two to four points of the same kind with no overlaps, then the specifics.</p>
+        </div>
+        <div>
+          <p class="mini-label">The test</p>
+          <p>If the reader stopped after the first sentence, would they know what you want or what you think?</p>
+        </div>
+      </div>
+
+      <div class="method">
+        <div class="method-name">
+          <h3>SCQA</h3>
+          <p class="source">Barbara Minto</p>
+          <span class="tag">Controls the opening</span>
+        </div>
+        <div>
+          <p class="mini-label">Pick it for</p>
+          <p>Explaining a decision or a change, or a request that needs context before it makes sense.</p>
+        </div>
+        <div>
+          <p class="mini-label">What changes</p>
+          <p>The opening runs situation, complication, then your answer, in an order chosen for this reader.</p>
+        </div>
+      </div>
+
+      <div class="method">
+        <div class="method-name">
+          <h3>MECE</h3>
+          <p class="source">Barbara Minto</p>
+          <span class="tag">Controls the grouping</span>
+        </div>
+        <div>
+          <p class="mini-label">Pick it for</p>
+          <p>Options, plans, comparisons, a list of asks: anything with categories.</p>
+        </div>
+        <div>
+          <p class="mini-label">What changes</p>
+          <p>Items sorted into clean groups on one dimension, with no overlaps and no gaps.</p>
+        </div>
+      </div>
+
+      <div class="method">
+        <div class="method-name">
+          <h3>Inverted Pyramid</h3>
+          <p class="source">Newsroom practice</p>
+          <span class="tag">Controls the order</span>
+        </div>
+        <div>
+          <p class="mini-label">Pick it for</p>
+          <p>News, announcements, schedule changes and recaps of what happened.</p>
+        </div>
+        <div>
+          <p class="mini-label">What changes</p>
+          <p>A lede that answers who, what, when, where, why and how. Details follow in falling order of importance, so the reader can stop anywhere.</p>
+        </div>
+      </div>
+
+      <div class="method">
+        <div class="method-name">
+          <h3>Writing Without Bullshit</h3>
+          <p class="source">Josh Bernoff</p>
+          <span class="tag">Controls the edit</span>
+        </div>
+        <div>
+          <p class="mini-label">Pick it for</p>
+          <p>Busy readers: a company, an office, a contractor. Also bad news, and replies in a thread that's gone long.</p>
+        </div>
+        <div>
+          <p class="mini-label">What changes</p>
+          <p>The first two sentences carry the message. Passive voice, jargon, weasel words and intensifiers come out, and the result is shorter.</p>
+        </div>
+      </div>
+
+      <div class="method">
+        <div class="method-name">
+          <h3>Storytelling with Data</h3>
+          <p class="source">Cole Nussbaumer Knaflic</p>
+          <span class="tag">Controls the numbers</span>
+        </div>
+        <div>
+          <p class="mini-label">Pick it for</p>
+          <p>Anything with figures: budgets, cost comparisons, a dispute over an amount.</p>
+        </div>
+        <div>
+          <p class="mini-label">What changes</p>
+          <p>A one-sentence Big Idea. Only the numbers that matter, each with a comparison, and a small table only when the reader needs to look things up.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band band-alt" id="formats" aria-labelledby="formats-title">
+    <div class="wrap">
+      <header class="section-head section-head-wide">
+        <p class="eyebrow">Formats</p>
+        <h2 id="formats-title">Where the point lands</h2>
+        <p>The format comes from the request, so you don't have to pick one. When two fit, it picks the one whose reader has less time. Anything meant to be kept is a Letter, and anything spoken aloud is a Story.</p>
+      </header>
+      <div class="table-scroll">
+        <table class="formats">
+          <thead>
+            <tr><th scope="col">Format</th><th scope="col">Use it for</th><th scope="col">Where the point lands</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Standard</th><td>Asks, updates, logistics, scheduling, most email</td><td>First sentence</td></tr>
+            <tr><th scope="row">Brief</th><td>Texts and quick replies under about 60 words</td><td>First sentence, and often the only one</td></tr>
+            <tr><th scope="row">Persuade</th><td>Complaints, refund requests, appeals, changing someone's mind</td><td>First lines as the ask, then again at the end as the action</td></tr>
+            <tr><th scope="row">Story</th><td>Toasts, tributes, personal posts, family updates with a turn in them</td><td>By the end of the opening paragraph</td></tr>
+            <tr><th scope="row">Letter</th><td>Cards, sympathy notes, anniversaries, a letter to a child</td><td>First true sentence after the greeting</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="example-line"><span class="mini-label">A Brief, start to finish</span> Running 10 min late, still good for 6:30? Saving you a seat if you beat me there.</p>
+    </div>
+  </section>
+
+  <section class="band" id="craft" aria-labelledby="craft-title">
+    <div class="wrap">
+      <header class="section-head section-head-wide">
+        <p class="eyebrow">The craft standard</p>
+        <h2 id="craft-title">Ten habits of an award-winning writer</h2>
+        <p>Told to write like an award winner, a model reaches for adjectives and big claims, which is the first family of AI tells. So the skill defines the standard by what strong writers do.</p>
+      </header>
+      <ol class="habits">
+        <li><h3>Find the detail only this piece has.</h3><p>Names, numbers, dates, what someone said. Without one, a piece can be correct and still forgettable.</p></li>
+        <li><h3>Let verbs do the work.</h3><p>"Fixed" beats "was able to resolve." Cut the adverbs propping up weak verbs.</p></li>
+        <li><h3>Make the first line earn the second.</h3><p>"Moving the deck start to 11/21?" beats "Following up."</p></li>
+        <li><h3>One idea per piece.</h3><p>If there are two, one leads and the other waits for a second message.</p></li>
+        <li><h3>Vary the rhythm on purpose.</h3><p>A short sentence after a long one. A colon, a question, a parenthesis when it fits.</p></li>
+        <li><h3>Earn the emotion.</h3><p>"She kept the voicemail for six years" says more than "it meant so much to her."</p></li>
+        <li><h3>Commit.</h3><p>Say "was the first" or "I think" when it's true. Hedging everything reads as nobody being home.</p></li>
+        <li><h3>Run the cover test.</h3><p>Hide the names. If it could be anyone's message to anyone, put the specifics back.</p></li>
+        <li><h3>Cut a fifth.</h3><p>The second pass removes about 20 percent: warm-up sentences, double adjectives, restatements.</p></li>
+        <li><h3>End strong.</h3><p>Close on the action, the date or the final image. Never on a recap or an offer of more help.</p></li>
+      </ol>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-foot">
+  <div class="wrap foot-row">
+    <p class="brand">Wordsmith Workshop</p>
+    <p>A skill for Claude. Methods from Barbara Minto, Josh Bernoff and Cole Nussbaumer Knaflic. The tell catalog is adapted from <a href="https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing">Wikipedia: Signs of AI writing</a> (WikiProject AI Cleanup, CC BY-SA 4.0). The scanner reports patterns. It can't tell you who or what wrote a piece.</p>
+  </div>
+</footer>
+
+<script src="assets/scanner.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
