@@ -368,12 +368,12 @@ a:hover { text-decoration-thickness: 2px; }
 }
 .manuscript textarea::placeholder { color: var(--ink-soft); }
 
-.hl { color: transparent; border-radius: 2px; transition: background-color 0.2s; }
+.hl { color: transparent; transition: background-color 0.2s; }
 .hl-strong { background: var(--strong-tint); box-shadow: inset 0 -2px 0 var(--strong); }
 .hl-moderate { background: var(--moderate-tint); box-shadow: inset 0 -2px 0 var(--moderate); }
 .hl-weak { box-shadow: inset 0 -2px 0 var(--weak); }
 .hl.is-hot { background: var(--pencil-tint); box-shadow: inset 0 -3px 0 var(--pencil); }
-.hl.is-flash { animation: flash 1.4s ease-out; }
+.hl.is-flash { background: var(--pencil-tint); box-shadow: inset 0 -3px 0 var(--pencil); animation: flash 1.4s ease-out; }
 @keyframes flash {
   0%, 40% { background: var(--pencil-tint); box-shadow: 0 0 0 3px var(--pencil); }
   100% { box-shadow: inset 0 -2px 0 var(--pencil); }
@@ -593,7 +593,7 @@ button.finding:hover { border-color: var(--pencil); }
   .sheet { padding: 18px 18px 20px; font-size: 0.94rem; }
   .families, .habits, .method, .foot-row { grid-template-columns: minmax(0, 1fr); }
   .method-base { padding-inline: 16px; }
-  .manuscript-backdrop, .manuscript textarea { padding: 16px; font-size: 0.95rem; }
+  .manuscript-backdrop, .manuscript textarea { padding: 16px; } /* stay at 16px: iOS zooms smaller inputs */
   .manuscript textarea { min-height: 16rem; }
   .master-test p { font-size: var(--step-1); }
 

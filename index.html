@@ -156,9 +156,13 @@
             <textarea id="scan-input" spellcheck="false" autocomplete="off" placeholder="Paste an email, a text, a toast or a card."></textarea>
           </div>
         </div>
-        <div class="pane pane-report" aria-live="polite">
+        <div class="pane pane-report">
           <p class="pane-label">Report</p>
-          <div id="summary" class="summary"></div>
+          <div class="summary">
+            <div id="tally" class="tally"></div>
+            <p id="verdict" class="verdict" aria-live="polite"></p>
+            <dl id="stats" class="stats"></dl>
+          </div>
           <div id="findings" class="findings"></div>
         </div>
       </div>

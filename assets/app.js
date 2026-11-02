@@ -47,7 +47,9 @@
   const input = document.getElementById("scan-input");
   const backdrop = document.getElementById("scan-backdrop");
   const wwb = document.getElementById("wwb");
-  const summary = document.getElementById("summary");
+  const tally = document.getElementById("tally");
+  const verdictEl = document.getElementById("verdict");
+  const statsEl = document.getElementById("stats");
   const list = document.getElementById("findings");
   const sampleButtons = {
     before: document.getElementById("load-before"),
@@ -57,7 +59,6 @@
   if (!input || !window.TellScan) return;
 
   const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let current = null;
 
   function esc(s) {
     return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -67,27 +68,40 @@
     return n + " " + word + (n === 1 ? "" : "s");
   }
 
-  // Pick non-overlapping spans to highlight, giving stronger hits first claim.
-  function highlightSpans(result) {
+  // Hits can overlap ("stands as a testament to" trips two patterns and the
+  // vocabulary list). Cut the text at every hit boundary; each piece records
+  // every finding that covers it and takes the colour of the most severe one.
+  // That way every located finding keeps at least one mark to jump to.
+  function highlightSegments(result) {
     const spans = [];
     result.findings.forEach((f, i) => {
       if (typeof f.start === "number" && f.end > f.start) spans.push({ start: f.start, end: f.end, sev: f.severity, i });
-      if (f.spans) f.spans.forEach((s) => spans.push({ start: s.start, end: s.end, sev: f.severity, i }));
+      if (f.spans) {
+        f.spans.forEach((s) => {
+          if (s.end > s.start) spans.push({ start: s.start, end: s.end, sev: f.severity, i });
+        });
+      }
     });
-    spans.sort((a, b) => RANK[a.sev] - RANK[b.sev] || a.start - b.start);
-    const kept = [];
-    for (const s of spans) {
-      if (!kept.some((k) => s.start < k.end && k.start < s.end)) kept.push(s);
+    const points = Array.from(new Set(spans.flatMap((s) => [s.start, s.end]))).sort((a, b) => a - b);
+    const segments = [];
+    for (let k = 0; k + 1 < points.length; k++) {
+      const a = points[k];
+      const b = points[k + 1];
+      const covering = spans.filter((s) => s.start <= a && s.end >= b);
+      if (!covering.length) continue;
+      let sev = "weak";
+      for (const s of covering) if (RANK[s.sev] < RANK[sev]) sev = s.sev;
+      segments.push({ start: a, end: b, sev, ids: Array.from(new Set(covering.map((s) => s.i))) });
     }
-    return kept.sort((a, b) => a.start - b.start);
+    return segments;
   }
 
   function renderBackdrop(text, result) {
     let html = "";
     let pos = 0;
-    for (const s of highlightSpans(result)) {
+    for (const s of highlightSegments(result)) {
       html += esc(text.slice(pos, s.start));
-      html += '<mark class="hl hl-' + s.sev + '" data-i="' + s.i + '">' + esc(text.slice(s.start, s.end)) + "</mark>";
+      html += '<mark class="hl hl-' + s.sev + '" data-ids="' + s.ids.join(" ") + '">' + esc(text.slice(s.start, s.end)) + "</mark>";
       pos = s.end;
     }
     html += esc(text.slice(pos));
@@ -131,11 +145,13 @@
       stats.push(["Jargon", w.jargon]);
     }
 
-    summary.innerHTML =
-      '<div class="tally">' + tiles + "</div>" +
-      '<p class="verdict">' + esc(verdict(c, r.words)) + "</p>" +
-      '<dl class="stats">' + stats.map(([k, v]) =>
-        "<div><dt>" + esc(k) + "</dt><dd>" + esc(String(v)) + "</dd></div>").join("") + "</dl>";
+    tally.innerHTML = tiles;
+    // The verdict is the page's only live region. Touch it only when the
+    // wording changes, so screen readers don't re-announce on every keystroke.
+    const v = verdict(c, r.words);
+    if (verdictEl.textContent !== v) verdictEl.textContent = v;
+    statsEl.innerHTML = stats.map(([k, val]) =>
+      "<div><dt>" + esc(k) + "</dt><dd>" + esc(String(val)) + "</dd></div>").join("");
   }
 
   function renderFindings(r) {
@@ -177,11 +193,12 @@
   }
 
   function run() {
+    clearTimeout(timer);
     const text = input.value.replace(/\r\n?/g, "\n");
-    current = window.TellScan.scan(text, { wwb: wwb.checked });
-    renderBackdrop(text, current);
-    renderSummary(current);
-    renderFindings(current);
+    const result = window.TellScan.scan(text, { wwb: wwb.checked });
+    renderBackdrop(text, result);
+    renderSummary(result);
+    renderFindings(result);
     autosize();
     for (const key of Object.keys(sampleButtons)) {
       sampleButtons[key].setAttribute("aria-pressed", String(text === SAMPLES[key]));
@@ -195,20 +212,25 @@
   }
 
   function marksFor(i) {
-    return backdrop.querySelectorAll('mark[data-i="' + i + '"]');
+    return backdrop.querySelectorAll('mark[data-ids~="' + i + '"]');
   }
 
+  let flashTimer = 0;
   list.addEventListener("click", (e) => {
     const btn = e.target.closest("button.finding");
     if (!btn) return;
     const marks = marksFor(btn.dataset.i);
     if (!marks.length) return;
     marks[0].scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+    backdrop.querySelectorAll(".is-flash").forEach((m) => m.classList.remove("is-flash"));
     marks.forEach((m) => {
-      m.classList.remove("is-flash");
       void m.offsetWidth; // restart the animation
       m.classList.add("is-flash");
     });
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => {
+      backdrop.querySelectorAll(".is-flash").forEach((m) => m.classList.remove("is-flash"));
+    }, 1600);
   });
 
   function setHot(e, on) {
