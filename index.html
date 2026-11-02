@@ -8,7 +8,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%232450C0'/%3E%3Cpath d='M14 18h9l5 20 4-14h4l4 14 5-20h5l-8 30h-5l-5-16-5 16h-5z' fill='%23fff'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Courier+Prime:wght@400;700&family=Gloock&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Caveat:wght@600;700&family=Courier+Prime:wght@400;700&family=Gloock&display=swap">
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
@@ -17,6 +17,7 @@
   <div class="wrap head-row">
     <a class="brand" href="#top">Wordsmith Workshop</a>
     <nav class="site-nav" aria-label="Sections">
+      <a href="#film">Film</a>
       <a href="#how">How it works</a>
       <a href="#scanner">Scanner</a>
       <a href="#methods">Methods</a>
@@ -35,7 +36,7 @@
       <p class="lede">Wordsmith Workshop drafts and audits the writing you send as yourself: a note to the contractor, a complaint to the airline, a toast, a card. Every piece starts from Minto's pyramid, and the skill scans every draft for the patterns that make writing read like a chatbot wrote it.</p>
       <div class="cta-row">
         <a class="btn btn-primary" href="#scanner">Scan a draft</a>
-        <a class="btn btn-ghost" href="#how">See how it works</a>
+        <a class="btn btn-ghost" href="#film">Watch the film (0:30)</a>
       </div>
 
       <div class="sheets">
@@ -57,6 +58,60 @@
         </figure>
       </div>
       <p class="sheets-caption">The ask moved from sentence four to sentence one. The vague context went, a fact that makes yes easy came in, and the email got about a third shorter.</p>
+    </div>
+  </section>
+
+
+  <section class="band band-film" id="film" aria-labelledby="film-title">
+    <div class="wrap">
+      <header class="section-head section-head-wide">
+        <p class="eyebrow">The film</p>
+        <h2 id="film-title">Thirty seconds with the blue pencil</h2>
+        <p>Turn the sound on. A chatbot email meets an editor's pencil, and what's left sounds like a person.</p>
+      </header>
+
+      <figure class="film" data-film data-vo-base="assets/film/vo/">
+        <div class="film-stage">
+          <canvas class="film-canvas" width="1920" height="1080" aria-hidden="true"></canvas>
+          <p class="film-caption" hidden></p>
+          <button class="film-big-play" type="button" aria-label="Play the film, 30 seconds, with sound">
+            <span class="film-big-play-icon" aria-hidden="true"></span>
+            <span class="film-big-play-text">Play the film</span>
+            <span class="film-big-play-meta">0:30 &middot; sound on</span>
+          </button>
+          <p class="film-status" role="status" hidden></p>
+        </div>
+        <div class="film-bar">
+          <button class="film-btn film-toggle" type="button" aria-label="Play" data-state="play">
+            <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12-7.5z"/></svg>
+            <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5h4v15H6zM14 4.5h4v15h-4z"/></svg>
+            <svg class="i-replay" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5V1.5L7 6l5 4.5V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg>
+          </button>
+          <input class="film-seek" type="range" min="0" max="29.5" step="0.01" value="0" aria-label="Seek through the film">
+          <span class="film-time">0:00 / 0:30</span>
+          <button class="film-btn film-cc" type="button" aria-pressed="true" aria-label="Captions">CC</button>
+          <button class="film-btn film-mute" type="button" aria-pressed="false" aria-label="Mute">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path class="i-speaker" d="M4 9h4l5-4v14l-5-4H4z"/><path class="i-waves" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="i-slash" d="M16 9l6 6M22 9l-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <figcaption>
+          <details class="film-transcript">
+            <summary>Read the transcript</summary>
+            <ol>
+              <li><span class="who">Narrator</span> You've read this email a thousand times.</li>
+              <li><span class="who">Chatbot</span> <q>I hope this message finds you well!</q></li>
+              <li><span class="who">Chatbot</span> <q>Your kindness is a vibrant testament.</q></li>
+              <li><span class="who">Narrator</span> Words that could belong to anyone.</li>
+              <li><span class="who">Narrator</span> Wordsmith Workshop puts your point first, and backs it with real details.</li>
+              <li><span class="who">Narrator</span> It shapes each piece with methods real editors use,</li>
+              <li><span class="who">Narrator</span> then checks every line for the tells that give a chatbot away.</li>
+              <li><span class="who">Narrator</span> Now it sounds like you.</li>
+              <li><span class="who">Narrator</span> Wordsmith Workshop. Lead with the point.</li>
+            </ol>
+            <p class="film-credit">Voices made with Kokoro, an open-source speech model. Music and sound effects are synthesized in the browser.</p>
+          </details>
+        </figcaption>
+      </figure>
     </div>
   </section>
 
@@ -356,5 +411,9 @@
 
 <script src="assets/scanner.js"></script>
 <script src="assets/app.js"></script>
+<script src="assets/film/film-kit.js" defer></script>
+<script src="assets/film/film-scenes.js" defer></script>
+<script src="assets/film/film-audio.js" defer></script>
+<script src="assets/film/film-player.js" defer></script>
 </body>
 </html>

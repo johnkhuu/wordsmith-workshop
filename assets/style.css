@@ -574,6 +574,122 @@ button.finding:hover { border-color: var(--pencil); }
   color: var(--ink-soft);
 }
 
+/* ---------- Film ---------- */
+
+.band-film { background: var(--band); }
+.film { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; min-width: 0; }
+.film-stage {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  max-width: 100%;
+  background: #2B5F54;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.06), 0 30px 60px -30px rgba(10, 20, 40, 0.6);
+}
+.film-canvas { display: block; width: 100%; max-width: 100%; height: 100%; cursor: pointer; }
+.film-big-play {
+  position: absolute;
+  left: 50%;
+  bottom: 9%;
+  transform: translateX(-50%) rotate(-1.5deg);
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 24px 14px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: #D13B2F;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  font-size: clamp(1rem, 1.6vw, 1.25rem);
+  cursor: pointer;
+  box-shadow: 0 10px 24px -8px rgba(0, 0, 0, 0.55);
+  transition: transform 0.15s ease;
+}
+.film-big-play:hover { transform: translateX(-50%) rotate(0deg) scale(1.04); }
+.film-big-play:focus-visible { outline: 3px solid #F8E9A1; outline-offset: 4px; }
+.film-big-play-icon {
+  width: 34px; height: 34px; border-radius: 50%; background: #fff; position: relative; flex: none;
+}
+.film-big-play-icon::after {
+  content: ""; position: absolute; left: 13px; top: 9px;
+  border-left: 12px solid #D13B2F; border-top: 8px solid transparent; border-bottom: 8px solid transparent;
+}
+.film-big-play-meta { font-weight: 400; opacity: 0.85; font-size: 0.85em; }
+.film.is-started .film-big-play { display: none; }
+.film-caption {
+  position: absolute;
+  left: 50%;
+  bottom: 5%;
+  transform: translateX(-50%);
+  max-width: 82%;
+  margin: 0;
+  padding: 0.35em 0.75em;
+  border-radius: 6px;
+  background: rgba(16, 20, 30, 0.8);
+  color: #fff;
+  font-weight: 700;
+  font-size: clamp(0.85rem, 2.1vw, 1.55rem);
+  line-height: 1.35;
+  text-align: center;
+  pointer-events: none;
+}
+.film-caption.is-bot { font-family: var(--font-mono); font-weight: 700; color: #BFF3E6; }
+.film-status {
+  position: absolute; top: 12px; left: 12px; margin: 0;
+  padding: 6px 10px; border-radius: 6px;
+  background: rgba(16, 20, 30, 0.8); color: #fff; font-size: 0.9rem;
+}
+.film-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--sheet);
+  border: 1px solid var(--rule);
+}
+.film-btn {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 40px; height: 40px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: 700 0.85rem var(--font-mono);
+  cursor: pointer;
+}
+.film-btn:hover { border-color: var(--pencil); color: var(--pencil); }
+.film-btn svg { width: 20px; height: 20px; fill: currentColor; }
+.film-toggle svg { display: none; }
+.film-toggle[data-state="play"] .i-play,
+.film-toggle[data-state="pause"] .i-pause,
+.film-toggle[data-state="replay"] .i-replay { display: block; }
+.film-cc[aria-pressed="true"] { background: var(--pencil-tint); border-color: var(--pencil); color: var(--pencil); }
+.film-mute .i-slash { display: none; }
+.film-mute[aria-pressed="true"] .i-slash { display: inline; }
+.film-mute[aria-pressed="true"] .i-waves { display: none; }
+.film-seek { flex: 1; min-width: 0; accent-color: var(--pencil); height: 24px; cursor: pointer; }
+.film-time { flex: none; font: 700 0.85rem var(--font-mono); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.film-transcript { font-size: 0.95rem; color: var(--ink-soft); }
+.film-transcript summary { cursor: pointer; color: var(--pencil); font-weight: 700; }
+.film-transcript ol { margin: 10px 0 0; padding-left: 1.4em; display: grid; gap: 4px; }
+.film-transcript .who { font: 700 0.8rem var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em; margin-right: 6px; color: var(--ink); }
+.film-credit { margin-top: 10px; font-size: 0.85rem; }
+
+@media (max-width: 560px) {
+  .film-time { display: none; }
+  .film-big-play { bottom: 6%; padding: 8px 14px 8px 8px; gap: 8px; }
+  .film-big-play-icon { width: 28px; height: 28px; }
+  .film-big-play-icon::after { left: 11px; top: 7px; border-left-width: 10px; border-top-width: 7px; border-bottom-width: 7px; }
+  .film-big-play-meta { display: none; }
+  .film-caption { padding: 0.25em 0.55em; bottom: 3%; }
+}
+
 /* ---------- Narrow screens ---------- */
 
 @media (max-width: 960px) {

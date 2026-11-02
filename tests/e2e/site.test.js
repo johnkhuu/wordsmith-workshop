@@ -250,7 +250,7 @@ test("the page's own copy passes the scanner", async () => {
   // tells, the struck-out "before" email and the scanner itself are skipped.
   const { page, context } = await open();
   const copy = await page.evaluate(() => {
-    const skip = ".sheet-before, q, del, .scan-grid, .scan-controls, script, style, nav";
+    const skip = ".sheet-before, q, del, .scan-grid, .scan-controls, .film-caption, .film-status, script, style, nav";
     const blocks = document.querySelectorAll("main p, main h1, main h2, main h3, main li, main th, main td, footer p");
     const out = [];
     for (const el of blocks) {
