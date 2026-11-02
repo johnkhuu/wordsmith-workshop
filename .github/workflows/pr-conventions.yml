@@ -1,0 +1,47 @@
+name: PR conventions
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  title:
+    name: PR title
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the title follows Conventional Commits
+        # The title goes through an environment variable, never straight into
+        # the script, so a crafted title can't inject shell commands.
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9-]+\))?!?: [^ ].*[^. ]$'
+          echo "Title: $TITLE"
+          if [[ ! "$TITLE" =~ $pattern ]]; then
+            echo "::error title=PR title::Use type(optional-scope): summary, for example 'feat(scanner): flag stock openers'. Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert. No period at the end. See CONTRIBUTING.md."
+            exit 1
+          fi
+          if (( ${#TITLE} > 72 )); then
+            echo "::error title=PR title::Keep the title to 72 characters or fewer. This one has ${#TITLE}."
+            exit 1
+          fi
+          echo "PR title follows the convention."
+
+  branch:
+    name: Branch name
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the branch name (warning only)
+        env:
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|claude|dependabot)/[a-z0-9][a-z0-9._/-]*$'
+          echo "Branch: $BRANCH"
+          if [[ "$BRANCH" =~ $pattern ]]; then
+            echo "Branch name follows the convention."
+          else
+            echo "::warning title=Branch name::Name branches type/short-description, for example feat/scanner-stock-openers. See CONTRIBUTING.md."
+          fi
