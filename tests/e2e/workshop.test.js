@@ -129,14 +129,16 @@ test("a fix card edits the line, updates the rewrite live, and moves on when it'
   await context.close();
 });
 
-test("a fix that leaves something flagged says so, and Skip moves on", async () => {
+test("a save that leaves something flagged says what's still open, and Keep it as is moves on", async () => {
   const { page, context } = await open();
   await toFix(page, "wwb");
   assert.equal(await page.textContent("#wz-progress-text"), "0 of 2 fixes done");
   await page.fill("#wz-input", "Could you refund the duplicate charge on invoice #4471? It should be looked at by Friday.");
   await page.click('[data-action="apply"]');
-  assert.match(await page.textContent(".wz-task-note"), /^1 thing left on this one/);
+  assert.match(await page.textContent(".wz-result.is-warn"), /^Saved\. Still open: Passive voice \(candidate\)\. Change the line, or keep it as is\.$/);
+  assert.equal(await page.textContent('[data-action="skip"]'), "Keep it as is");
   await page.click('[data-action="skip"]');
+  assert.match(await page.textContent(".wz-result.is-info"), /^Kept your point as is\.$/);
   assert.match(await page.textContent(".wz-task-head h4"), /Supporting line 1/);
   assert.match(await page.textContent("#wz-progress-text"), /1 of 2 fixes done/);
   assert.match(await page.textContent("#ws-cuts"), /^Trimmed 4 stock phrases/);
@@ -346,16 +348,72 @@ test("a choice applies with one click", async () => {
   await context.close();
 });
 
-test("a note that needs your words waits for an edit before saving", async () => {
+test("Save my edit always answers: nothing changed, still open, or fixed", async () => {
   const { page, context } = await open();
   await toFix(page, "pyramid");
   const button = '#wz-task [data-action="apply"]';
   assert.equal(await page.textContent(button), "Save my edit");
-  assert.equal(await page.isDisabled(button), true);
+  assert.equal(await page.isDisabled(button), false, "the button is never dead");
   assert.equal(await page.textContent(".wz-needs"), "Needs your words");
-  await page.fill("#wz-input", "Could we move the deck start from 11/14 to 11/21?");
-  assert.equal(await page.isDisabled(button), false);
   await page.click(button);
+  assert.match(await page.textContent(".wz-result.is-info"), /^Nothing has changed yet/);
+  assert.equal(await active(page), "wz-input");
+  // "Thanks." starts a sentence; it isn't a name, so the point is still vague.
+  await page.fill("#wz-input", "Would it be possible to push it back? Thanks.");
+  await page.click(button);
+  assert.match(await page.textContent(".wz-result.is-warn"), /^Saved\. Still open: Your point leans on a vague word/);
+  await page.fill("#wz-input", "Could we move the deck start from 11/14 to 11/21?");
+  await page.click(button);
+  assert.match(await page.textContent(".wz-result.is-ok"), /^Saved\. Your point is fixed\. That was the last one\.$/);
   assert.match(await page.textContent(".wz-clear h4"), /All fixed/);
+  await context.close();
+});
+
+test("no dead buttons: every card's buttons do something visible, on every example", async () => {
+  const { page, context, errors } = await open();
+  const look = () => page.evaluate(() => ({
+    key: document.getElementById("wz-task").dataset.key || "",
+    result: (document.querySelector("#wz-task .wz-result") || {}).textContent || "",
+    text: document.getElementById("ws-preview").dataset.text,
+  }));
+  for (const key of Object.keys(W.EXAMPLES)) {
+    await page.click('.wz-step[data-go="paste"]');
+    await page.click(`[data-example="${key}"]`);
+    await page.click("#wz-rewrite");
+    for (let i = 0; i < 8; i++) {
+      const before = await look();
+      if (!before.key) break;
+      // The main button, with no typing at all.
+      await page.click('#wz-task [data-action="apply"]');
+      const after = await look();
+      assert.ok(after.result || after.key !== before.key || after.text !== before.text, `${key}: "${before.key}" did nothing`);
+      if (!after.key || after.key !== before.key) continue;
+      // Then keep it as is: the card always moves on.
+      await page.click('#wz-task [data-action="skip"]');
+      const moved = await look();
+      assert.notEqual(moved.key, before.key, `${key}: keeping "${before.key}" didn't move on`);
+    }
+    assert.match(await page.textContent("#wz-task"), /All fixed|Nothing to fix/, key);
+  }
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test("on a phone, the answer to a tap shows up where you're looking", async () => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 740 }, reducedMotion: "reduce" });
+  const page = await context.newPage();
+  await page.route("**/*", (route) => (route.request().url().startsWith(site.url) ? route.continue() : route.fulfill({ status: 200, contentType: "text/css", body: "" })));
+  await page.goto(site.url);
+  await page.click('[data-example="data"]');
+  await page.click("#wz-rewrite");
+  const inView = () => page.$eval(".wz-result", (el) => { const r = el.getBoundingClientRect(); return r.top > -2 && r.bottom <= innerHeight + 2; });
+  await page.click('#wz-task [data-action="apply"]');
+  assert.equal(await inView(), true, "nothing changed");
+  await page.fill("#wz-input", "The plan saves us a lot.");
+  await page.click('#wz-task [data-action="apply"]');
+  assert.equal(await inView(), true, "still open");
+  await page.fill("#wz-input", "The new plan saves us $34 a month: $61 instead of $95.");
+  await page.click('#wz-task [data-action="apply"]');
+  assert.equal(await inView(), true, "fixed");
   await context.close();
 });

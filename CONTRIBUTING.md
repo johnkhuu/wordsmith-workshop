@@ -109,8 +109,8 @@ npm test
 
 | Command | What it runs |
 |---|---|
-| `npm run test:unit` | Scanner tests (parity with the skill's Python scanner, boundary cases for every threshold, offsets, speed and edge cases), workshop logic tests, and film timeline tests |
-| `npm run test:e2e` | Browser tests in Chromium: the scanner, the workshop, the method tabs, the film player, escaping, layout at four widths in both themes, and a scan of the page's own copy |
+| `npm run test:unit` | A check that every script the page loads parses, scanner tests (parity with the skill's Python scanner, boundary cases for every threshold, offsets, speed and edge cases), workshop logic tests, and film timeline tests |
+| `npm run test:e2e` | Browser tests in Chromium: the scanner, the workshop (including a test that every card button does something visible, with no typing, on every example), the method tabs, the film player, escaping, layout at four widths in both themes, and a scan of the page's own copy |
 | `npm start` | Serves the site at http://localhost:8000 |
 
 The browser tests block requests to other hosts, so they don't need the network and run with the fallback fonts.

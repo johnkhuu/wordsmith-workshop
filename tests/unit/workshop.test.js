@@ -204,7 +204,7 @@ test("each 'before' example gets the coaching its method is for", () => {
     pyramid: ["minto-specific"],
     scqa: ["scqa-situation", "scqa-complication"],
     mece: ["minto-point", "mece-rule", "mece-count", "mece-overlap"],
-    wwb: ["minto-specific", "wwb-edit", "tells"],
+    wwb: ["minto-specific", "wwb-edit", "cover-test", "tells"],
     data: ["data-big-idea", "data-vague", "cover-test"],
   };
   for (const [key, want] of Object.entries(expected)) {
@@ -476,14 +476,15 @@ test("every desk has a lane, and the sign-off board reports each one", () => {
   assert.ok(W.deskReport(inv.st, inv.parsed).every((d) => d.signed), "the inverted example passes every desk");
   const wwb = firstPass("wwb");
   const board = Object.fromEntries(W.deskReport(wwb.st, wwb.parsed).map((d) => [d.key, d.signed]));
-  assert.deepEqual(board, { structure: false, line: false, copy: true, facts: true, copywriter: true, tells: false });
+  // No amount, date or name: the copywriter's cover test stays open until one goes in.
+  assert.deepEqual(board, { structure: false, line: false, copy: true, facts: true, copywriter: false, tells: false });
 });
 
 test("fix cards and review flags say which desk raised them", () => {
   const { st, parsed } = firstPass("wwb");
   const cards = W.tasks(st, parsed);
   assert.deepEqual(cards.map((c) => c.desk), ["structure", "line"]);
-  assert.deepEqual(cards[0].issues.map((i) => i.desk), ["structure", "line"]);
+  assert.deepEqual(cards[0].issues.map((i) => i.desk), ["structure", "copywriter", "line"]);
   const d = W.diagnose(W.EXAMPLES.pyramid.text, W.parseDraft(W.EXAMPLES.pyramid.text), W.methodsFrom([]));
   assert.deepEqual(d.flags.map((f) => f.desk), ["structure", "line", "structure", "tells", "copywriter"]);
   const draft = "Hi Sam,\n\nCould you come Friday, 11/7 at 7pm? Dana and Dena will be there at 8 p.m.\n\nThanks,\nJo";
@@ -567,4 +568,11 @@ test("restyling a time keeps the period that ended the sentence", () => {
   const t = "Could you come at 7pm? Dana arrives at 8 p.m. I think that works.";
   const f = W.polish(t).find((x) => x.code === "K2");
   assert.equal(W.applyPairs(t, f.fix.pairs), "Could you come at 7pm? Dana arrives at 8pm. I think that works.");
+});
+
+test("a word that starts a sentence isn't a name, so it can't pass the point or cover checks", () => {
+  const vague = state({ point: "Would it be possible to push it back? Thanks." });
+  assert.ok(W.check(vague, null).some((c) => c.id === "minto-specific" && c.status === "warn"));
+  const named = state({ point: "Could you ask Mark to push it back?" });
+  assert.ok(W.check(named, null).some((c) => c.id === "minto-specific" && c.status === "pass"));
 });

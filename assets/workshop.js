@@ -48,6 +48,7 @@
   let skipped = new Set();
   let fixed = 0;
   let current = null;            // the key of the fix card on screen
+  let result = null;             // what the last click did: { kind, text }, shown on the card
   let flashPart = null;          // the part of the rewrite that just changed
   let exampleMethods = null;     // an example brings its own method
   let recsShown = [];
@@ -320,7 +321,7 @@
     const card = open.find((c) => c.key === current) || open[0] || null;
     current = card ? card.key : null;
     if (!card) {
-      taskEl.innerHTML = '<div class="wz-clear"><span class="wz-done-badge is-small" aria-hidden="true">' + CHECK_SVG + "</span>" +
+      taskEl.innerHTML = banner("top") + banner("actions") + '<div class="wz-clear"><span class="wz-done-badge is-small" aria-hidden="true">' + CHECK_SVG + "</span>" +
         "<h4>" + (seen.size ? "All fixed. Nice work." : "Nothing to fix. It's in good shape.") + "</h4>" +
         "<p>Read the rewrite once more, then take it to the finish.</p>" +
         '<button type="button" class="btn btn-primary btn-big" data-action="finish">See it ready to send</button></div>';
@@ -330,7 +331,8 @@
     }
     const n = open.indexOf(card) + 1;
     const method = card.issues[0].method;
-    let body = '<p class="wz-task-count">Fix ' + n + " of " + open.length + (note ? ' <span class="wz-task-note">' + esc(note) + "</span>" : "") + "</p>";
+    let body = banner("top");
+    body += '<p class="wz-task-count">Fix ' + n + " of " + open.length + (note ? ' <span class="wz-task-note">' + esc(note) + "</span>" : "") + "</p>";
     body += '<p class="wz-task-from">' + avatar(card.desk) + "<span>Note from the " + esc(desk(card.desk).name) + "</span></p>";
     body += '<div class="wz-task-head"><h4>' + esc(cardTitle(card)) + "</h4>" +
       (method && method !== "audit" && method !== "polish" ? '<span class="slot-owner m-' + method + '">' + esc(W.METHOD_NAMES[method]) + "</span>" : "") + "</div>";
@@ -362,17 +364,18 @@
     const autos = W.autoFixes(card);
     const manual = card.issues.some((i) => !i.fix);
     const primary = autos ? (autos === 1 ? "Apply fix" : "Apply " + autos + " fixes") : card.field === "groups" ? "Save the groups" : "Save my edit";
-    const waits = !autos && card.field !== "groups";
+    body += banner("actions");
     if (card.field === "general") {
       body += '<div class="wz-row">' + (autos ? '<button type="button" class="btn btn-primary" data-action="apply">' + primary + "</button>" : "") +
-        '<button type="button" class="btn ' + (autos ? "btn-quiet" : "btn-primary") + '" data-action="skip">' + (autos ? "Skip" : "Got it") + "</button></div>";
+        '<button type="button" class="btn ' + (autos ? "btn-quiet" : "btn-primary") + '" data-action="skip">' + (autos ? "Keep it as is" : "Got it") + "</button></div>";
     } else {
-      body += '<div class="wz-row"><button type="button" class="btn btn-primary" data-action="apply"' + (waits ? ' data-waits="1" disabled' : "") + ">" + primary + "</button>" +
-        '<button type="button" class="btn btn-quiet" data-action="skip">Skip</button></div>';
+      body += '<div class="wz-row"><button type="button" class="btn btn-primary" data-action="apply">' + primary + "</button>" +
+        '<button type="button" class="btn btn-quiet" data-action="skip">Keep it as is</button></div>';
       if (autos && manual) body += '<p class="wz-small">' + esc(primary) + " makes the " + (autos === 1 ? "change it can" : "changes it can") + ". The note marked “Needs your words” is yours to edit above.</p>";
-      else if (waits && manual) body += '<p class="wz-small">This one needs your words. Edit the line, then save.</p>';
+      else if (manual) body += '<p class="wz-small">This one needs your words: edit the line, then save. Or keep it as is if the note doesn’t fit.</p>';
     }
     taskEl.innerHTML = body;
+    taskEl.dataset.original = card.field === "groups" ? JSON.stringify([state.rule, state.groups]) : String(card.value || "");
     taskEl.dataset.key = card.key;
     taskEl.dataset.field = card.field;
     taskEl.dataset.index = String(card.index);
@@ -395,13 +398,28 @@
     return '<p class="wz-fix-preview"><span class="wz-fix-label">Fix:</span> ' + shown + "</p>";
   }
 
+  // The result of the last click. When the card stays, it sits right above the
+  // buttons you just pressed; when the card moves on, at the top of the next one.
+  function banner(where) {
+    if (!result || (result.where || "top") !== where) return "";
+    const html = '<div class="wz-result is-' + result.kind + '" role="status" data-where="' + where + '"><span class="wz-result-icon" aria-hidden="true">' +
+      (result.kind === "ok" ? CHECK_SVG : "") + '</span><p>' + esc(result.text) + "</p></div>";
+    result = null;
+    return html;
+  }
+
   function onScreen() {
     return taskEl.dataset.field ? { key: taskEl.dataset.key, field: taskEl.dataset.field, index: Number(taskEl.dataset.index || 0) } : null;
   }
 
   function focusTask() {
     const target = taskEl.querySelector("#wz-input, .wz-group-label, [data-action]");
-    if (target) target.focus();
+    if (target) target.focus({ preventScroll: true });
+    // Keep the result of the last click in sight, even on a small screen.
+    const shown = taskEl.querySelector(".wz-result");
+    const top = shown && shown.dataset.where === "top";
+    const el = shown || target;
+    if (el) el.scrollIntoView({ block: top ? "start" : "nearest", behavior: reduceMotion ? "auto" : "smooth" });
   }
 
   function saveEdit(card) {
@@ -412,9 +430,16 @@
     }
   }
 
+  function currentText(card) {
+    if (card.field === "groups") { readGroupsEditor("wz"); return JSON.stringify([state.rule, state.groups]); }
+    const input = $("wz-input");
+    return input ? input.value : "";
+  }
+
   function applyCard() {
     const card = onScreen();
     if (!card) { renderFix(); focusTask(); return; }
+    const edited = currentText(card) !== taskEl.dataset.original;
     saveEdit(card);
     const live = W.tasks(state, parsed).find((c) => c.key === card.key);
     let applied = 0;
@@ -423,7 +448,15 @@
       state = r.state;
       applied = r.applied;
     }
-    settle(card, applied);
+    if (!edited && !applied && live) {
+      // Nothing to save and nothing the desk can fix on its own: say so, right here.
+      result = { kind: "info", where: "actions", text: "Nothing has changed yet. Edit the line above, or keep it as is if the note doesn't fit." };
+      say(result.text);
+      renderFix();
+      focusTask();
+      return;
+    }
+    settle(card, applied, null, edited);
   }
 
   function chooseFix(button) {
@@ -436,36 +469,41 @@
     if (k < 0) k = Number(button.dataset.issue);
     const r = W.applyFixes(state, live, { [k]: Number(button.dataset.choice) });
     state = r.state;
-    settle(card, r.applied, button.textContent);
+    settle(card, r.applied, button.textContent, false);
   }
 
   // After a change: move on if the line is clean, or say what's left.
-  function settle(card, applied, what) {
+  function settle(card, applied, what, edited) {
     flashPart = { field: card.field === "groups" ? "group-items" : card.field, index: card.index };
+    const title = cardTitle(card);
     const still = W.tasks(state, parsed).find((c) => c.key === card.key);
     renderSlots();
-    const done = applied ? (what ? what + ". " : "Applied " + plural(applied, "fix", "fixes") + ". ") : "";
+    const did = what ? what + "." : applied && edited ? "Saved, and applied " + plural(applied, "fix", "fixes") + "." : applied ? "Applied " + plural(applied, "fix", "fixes") + "." : "Saved.";
     if (still) {
-      const left = still.issues.length;
-      renderFix(done + plural(left, "thing", "things") + " left on this one.");
-      say(done + plural(left, "thing is", "things are") + " still flagged on this line.");
+      const open = still.issues.map((i) => i.title.replace(/[.]$/, ""));
+      result = { kind: "warn", where: "actions", text: did + " Still open: " + open.join("; ") + ". Change the line, or keep it as is." };
+      say(result.text);
+      renderFix();
       focusTask();
     } else {
       fixed += 1;
       current = null;
+      const left = openTasks().length;
+      result = { kind: "ok", text: did + " " + title + " is fixed. " + (left ? plural(left, "fix", "fixes") + " to go." : "That was the last one.") };
+      say(result.text);
       renderFix();
-      const open = openTasks();
-      say("Fixed. " + (open.length ? plural(open.length, "fix", "fixes") + " to go." : "That was the last one."));
       focusTask();
     }
   }
 
   function skipCard() {
     if (!current) return;
+    const title = cardTitle(W.tasks(state, parsed).find((c) => c.key === current) || { field: "general" });
     skipped.add(current);
     current = null;
+    result = { kind: "info", text: "Kept " + title.charAt(0).toLowerCase() + title.slice(1) + " as is." };
+    say(result.text);
     renderFix();
-    say("Skipped.");
     focusTask();
   }
 
@@ -512,8 +550,6 @@
     if (e.target.id === "wz-input") {
       W.setField(state, card.field, card.index, e.target.value);
       grow(e.target);
-      const wait = taskEl.querySelector('[data-action="apply"][data-waits]');
-      if (wait) wait.disabled = false;
     } else if (card.field === "groups") {
       readGroupsEditor("wz");
       if (e.target.tagName === "TEXTAREA") grow(e.target);

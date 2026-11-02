@@ -989,6 +989,14 @@ mark.ws-new { color: inherit; border-radius: 3px; background: var(--ok-tint); an
 .d-line-copywriter { --desk: #C23D84; }
 .d-line-tells { --desk: var(--ink-soft); }
 .wz-issue-title { font-weight: 600; line-height: 1.4; }
+.wz-result { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px 12px; border-radius: 14px; font-weight: 600; font-size: 0.95rem; line-height: 1.45; animation: wz-in 0.3s ease both; }
+.wz-result.is-ok { background: var(--ok-tint); color: var(--ink); }
+.wz-result.is-warn { background: var(--moderate-tint); color: var(--ink); }
+.wz-result.is-info { background: var(--hot-tint); color: var(--ink); }
+.wz-result-icon { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); }
+.wz-result.is-ok .wz-result-icon svg { width: 16px; height: 16px; fill: var(--ok); }
+.wz-result.is-warn .wz-result-icon::after { content: "!"; font: 700 0.85rem/1 var(--font-body); color: var(--moderate); }
+.wz-result.is-info .wz-result-icon::after { content: "i"; font: 700 0.85rem/1 var(--font-body); color: var(--hot); }
 .wz-fix-preview { margin-top: 6px; font-size: 0.92rem; line-height: 1.5; }
 .wz-fix-label { font-weight: 700; color: var(--ok); margin-right: 2px; }
 .wz-fix-preview del { color: var(--ink-soft); text-decoration-color: var(--accent); text-decoration-thickness: 1.5px; }

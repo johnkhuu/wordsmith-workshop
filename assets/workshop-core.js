@@ -1009,7 +1009,7 @@
         add("minto-one", "pyramid", "warn", "Two points are fighting for the lead",
           "Pick the one that leads and move the other into the support, or send it separately.");
       }
-      const specific = RX.digit.test(point) || RX.date.test(point) || /(?<=\S\s)[A-Z][a-z]+/.test(point);
+      const specific = RX.digit.test(point) || RX.date.test(point) || /(?<=[a-z0-9,;:'’)] )[A-Z][a-z]+/.test(point);
       if (RX.vague.test(point) && !specific) {
         add("minto-specific", "pyramid", "warn", "Your point leans on a vague word",
           "Name the thing and the date, so the point works on its own. Not: push it back. Instead: Could we move the deck start from 11/14 to 11/21?",
@@ -1164,7 +1164,7 @@
     deskLine("facts", "facts-pass", (n) => n === 1 ? "A date doesn't check out" : n + " dates don't check out", "Every day matches its date");
     // The cover test (craft.md): could this be anyone's message to anyone?
     const bodyOnly = built.body;
-    const detail = RX.digit.test(bodyOnly) || RX.date.test(bodyOnly) || /(?<=\S\s)[A-Z][a-z]+/.test(bodyOnly);
+    const detail = RX.digit.test(bodyOnly) || RX.date.test(bodyOnly) || /(?<=[a-z0-9,;:'’)] )[A-Z][a-z]+/.test(bodyOnly);
     if (wordCount(bodyOnly) > 12) {
       if (detail) add("cover-test", "polish", "pass", "Has a detail only this message has", "", [], "copywriter");
       else add("cover-test", "polish", "warn", "No detail only this message has", "Hide the names: could this be anyone's message? Add a name or a number so it couldn't be.", [], "copywriter");
