@@ -335,9 +335,9 @@
     body += '<div class="wz-task-head"><h4>' + esc(cardTitle(card)) + "</h4>" +
       (method && method !== "audit" && method !== "polish" ? '<span class="slot-owner m-' + method + '">' + esc(W.METHOD_NAMES[method]) + "</span>" : "") + "</div>";
     const mixed = card.issues.some((i) => i.desk !== card.desk);
-    body += '<ul class="wz-issues">' + card.issues.map((i) =>
+    body += '<ul class="wz-issues">' + card.issues.map((i, k) =>
       '<li class="d-line-' + i.desk + '">' + (mixed ? '<p class="wz-issue-desk">' + esc(desk(i.desk).name) + "</p>" : "") + '<p class="wz-issue-title">' + esc(i.title) + (i.quotes && i.quotes.length ? ' <span class="ws-user">' + i.quotes.map((q) => "<q>" + esc(q) + "</q>").join(" ") + "</span>" : "") + "</p>" +
-      (i.detail ? '<p class="wz-issue-detail">' + esc(i.detail) + "</p>" : "") + "</li>").join("") + "</ul>";
+      (i.detail ? '<p class="wz-issue-detail">' + esc(i.detail) + "</p>" : "") + fixLine(i, k) + "</li>").join("") + "</ul>";
 
     if (card.field === "groups") {
       body += groupsEditor("wz");
@@ -357,9 +357,21 @@
         }
       }
     }
-    body += '<div class="wz-row">' + (card.field === "general"
-      ? '<button type="button" class="btn btn-primary" data-action="skip">Got it</button>'
-      : '<button type="button" class="btn btn-primary" data-action="apply">Apply fix</button><button type="button" class="btn btn-quiet" data-action="skip">Skip</button>') + "</div>";
+    // "Apply fix" makes every fix it can. A note that needs the writer's words
+    // turns the button into "Save my edit", which waits for an edit.
+    const autos = W.autoFixes(card);
+    const manual = card.issues.some((i) => !i.fix);
+    const primary = autos ? (autos === 1 ? "Apply fix" : "Apply " + autos + " fixes") : card.field === "groups" ? "Save the groups" : "Save my edit";
+    const waits = !autos && card.field !== "groups";
+    if (card.field === "general") {
+      body += '<div class="wz-row">' + (autos ? '<button type="button" class="btn btn-primary" data-action="apply">' + primary + "</button>" : "") +
+        '<button type="button" class="btn ' + (autos ? "btn-quiet" : "btn-primary") + '" data-action="skip">' + (autos ? "Skip" : "Got it") + "</button></div>";
+    } else {
+      body += '<div class="wz-row"><button type="button" class="btn btn-primary" data-action="apply"' + (waits ? ' data-waits="1" disabled' : "") + ">" + primary + "</button>" +
+        '<button type="button" class="btn btn-quiet" data-action="skip">Skip</button></div>';
+      if (autos && manual) body += '<p class="wz-small">' + esc(primary) + " makes the " + (autos === 1 ? "change it can" : "changes it can") + ". The note marked “Needs your words” is yours to edit above.</p>";
+      else if (waits && manual) body += '<p class="wz-small">This one needs your words. Edit the line, then save.</p>';
+    }
     taskEl.innerHTML = body;
     taskEl.dataset.key = card.key;
     taskEl.dataset.field = card.field;
@@ -368,6 +380,19 @@
     const input = $("wz-input");
     if (input) { input.value = card.value || ""; grow(input); }
     if (card.field === "groups") fillGroupsEditor("wz");
+  }
+
+  function fixLine(i, k) {
+    const cutText = (x) => (x.length > 70 ? x.slice(0, 67) + "…" : x);
+    if (!i.fix) return '<p class="wz-needs">Needs your words</p>';
+    if (i.fix.choices) {
+      return '<div class="wz-choices" role="group" aria-label="Choose the fix">' + i.fix.choices.map((c, o) =>
+        '<button type="button" class="btn btn-small wz-choice" data-issue="' + k + '" data-choice="' + o + '" data-title="' + esc(i.title) + '">' + esc(c.label) + "</button>").join("") + "</div>";
+    }
+    const shown = i.fix.say ? esc(i.fix.say) : i.fix.pairs.filter((p) => typeof p.find === "string").map((p) => p.replace
+      ? '<del class="ws-user">' + esc(cutText(p.find)) + '</del> <span aria-hidden="true">→</span><span class="sr-only">becomes</span> <ins class="ws-user">' + esc(cutText(p.replace)) + "</ins>"
+      : 'cut <del class="ws-user">' + esc(cutText(p.find)) + "</del>").join(", ") || "A quick fix";
+    return '<p class="wz-fix-preview"><span class="wz-fix-label">Fix:</span> ' + shown + "</p>";
   }
 
   function onScreen() {
@@ -379,20 +404,51 @@
     if (target) target.focus();
   }
 
-  function applyCard() {
-    const card = onScreen();
-    if (!card) { renderFix(); focusTask(); return; }
+  function saveEdit(card) {
     if (card.field === "groups") readGroupsEditor("wz");
     else {
       const input = $("wz-input");
       if (input) W.setField(state, card.field, card.index, input.value);
     }
+  }
+
+  function applyCard() {
+    const card = onScreen();
+    if (!card) { renderFix(); focusTask(); return; }
+    saveEdit(card);
+    const live = W.tasks(state, parsed).find((c) => c.key === card.key);
+    let applied = 0;
+    if (live) {
+      const r = W.applyFixes(state, live);
+      state = r.state;
+      applied = r.applied;
+    }
+    settle(card, applied);
+  }
+
+  function chooseFix(button) {
+    const card = onScreen();
+    if (!card) return;
+    saveEdit(card);
+    const live = W.tasks(state, parsed).find((c) => c.key === card.key);
+    if (!live) { settle(card, 0); return; }
+    let k = live.issues.findIndex((i) => i.title === button.dataset.title && i.fix && i.fix.choices);
+    if (k < 0) k = Number(button.dataset.issue);
+    const r = W.applyFixes(state, live, { [k]: Number(button.dataset.choice) });
+    state = r.state;
+    settle(card, r.applied, button.textContent);
+  }
+
+  // After a change: move on if the line is clean, or say what's left.
+  function settle(card, applied, what) {
     flashPart = { field: card.field === "groups" ? "group-items" : card.field, index: card.index };
     const still = W.tasks(state, parsed).find((c) => c.key === card.key);
     renderSlots();
+    const done = applied ? (what ? what + ". " : "Applied " + plural(applied, "fix", "fixes") + ". ") : "";
     if (still) {
-      renderFix("Almost: " + plural(still.issues.length, "thing", "things") + " left on this one.");
-      say("Applied. " + plural(still.issues.length, "thing is", "things are") + " still flagged on this line.");
+      const left = still.issues.length;
+      renderFix(done + plural(left, "thing", "things") + " left on this one.");
+      say(done + plural(left, "thing is", "things are") + " still flagged on this line.");
       focusTask();
     } else {
       fixed += 1;
@@ -422,6 +478,7 @@
     const b = e.target.closest("button");
     if (!b) return;
     if (b.dataset.action === "apply") applyCard();
+    else if (b.dataset.choice !== undefined) chooseFix(b);
     else if (b.dataset.action === "skip") skipCard();
     else if (b.dataset.action === "finish") finish();
     else if (b.dataset.pick) {
@@ -455,6 +512,8 @@
     if (e.target.id === "wz-input") {
       W.setField(state, card.field, card.index, e.target.value);
       grow(e.target);
+      const wait = taskEl.querySelector('[data-action="apply"][data-waits]');
+      if (wait) wait.disabled = false;
     } else if (card.field === "groups") {
       readGroupsEditor("wz");
       if (e.target.tagName === "TEXTAREA") grow(e.target);

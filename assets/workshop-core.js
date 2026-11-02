@@ -868,6 +868,77 @@
   };
   function plainFix(f) { return FIX_FOR_PAGE[f.code] || f.fix; }
 
+  const withSay = (say, fix) => Object.assign(fix, { say });
+  const JARGON_SWAP = { "touch base": "talk", "circle back": "follow up", "going forward": "from now on", "moving forward": "from now on",
+    "at your earliest convenience": "", "per my last email": "", "please be advised": "", "as per": "per", "action items": "next steps",
+    "action item": "next step", "bandwidth": "time", "leverage": "use" };
+  function scannerFix(f) {
+    const m = (f.match || "").trim();
+    if (!m) return null;
+    if (f.code === "W3") return cut(m);
+    if (f.code === "W4" && JARGON_SWAP[m.toLowerCase()] !== undefined) {
+      const to = JARGON_SWAP[m.toLowerCase()];
+      return to ? swap(m, matchCase(m, to)) : cut(m);
+    }
+    if (f.code === "C6") return Object.assign(swap(/\s*[—–]\s*/, ", "), { say: "Swap the dash for a comma" });
+    if (f.code === "C8") return withSay("Cut “" + m + "”", cut(new RegExp("\\b" + m.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ",?\\s*")));
+    if (f.code === "D5" || f.code === "D5m") return withSay("Cut “" + m + "”", cut(new RegExp(m.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ",?\\s*")));
+    if (f.code === "D6" || f.code === "D6m") return withSay("Cut “" + m + "”", cut(new RegExp(m.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "[.!,]?\\s*", "i")));
+    return null;
+  }
+
+  // Applying fixes. Find strings match exactly, then ignoring case; patterns
+  // replace their first match (or every match, for a /g pattern).
+  function applyPairs(text, pairs) {
+    let out = String(text || "");
+    for (const pr of pairs) {
+      if (pr.find instanceof RegExp) { out = out.replace(pr.find, pr.replace); continue; }
+      let at = out.indexOf(pr.find);
+      if (at < 0) at = out.toLowerCase().indexOf(String(pr.find).toLowerCase());
+      if (at < 0) continue;
+      out = out.slice(0, at) + pr.replace + out.slice(at + pr.find.length);
+    }
+    // Tidy what a cut leaves behind.
+    return out.replace(/ {2,}/g, " ").replace(/\s+([,.!?;:])/g, "$1").replace(/,\s*([.!?])/g, "$1").replace(/^[\s,;:]+/, "")
+      .replace(/(^|[.!?]\s+)([a-z])/g, (x, a, c) => a + c.toUpperCase()).trim();
+  }
+
+  function contentFields(st) {
+    const list = [["point", 0], ["situation", 0], ["complication", 0], ["background", 0], ["close", 0], ["subject", 0]];
+    st.support.forEach((x, i) => list.push(["support", i]));
+    st.groups.forEach((g, i) => list.push(["group-items", i]));
+    return list;
+  }
+
+  // Applies a card's automatic fixes, and any choices the writer picked
+  // ({ issueIndex: choiceIndex }). Returns the new state and how many changed.
+  function applyFixes(state, card, picks) {
+    const st = JSON.parse(JSON.stringify(state, (k, v) => (v instanceof RegExp ? undefined : v)));
+    let applied = 0;
+    card.issues.forEach((issue, k) => {
+      let fix = issue.fix;
+      if (!fix) return;
+      if (fix.choices) {
+        if (!picks || picks[k] === undefined) return;
+        fix = fix.choices[picks[k]];
+      }
+      const fields = fix.scope === "all" ? contentFields(st) : [[card.field, card.index]];
+      let changed = false;
+      for (const [f, i] of fields) {
+        const before = fieldValue(st, f, i);
+        if (!before) continue;
+        const after = applyPairs(before, fix.pairs);
+        if (after !== before) { setField(st, f, i, after); changed = true; }
+      }
+      if (changed) applied += 1;
+    });
+    return { state: st, applied };
+  }
+
+  function autoFixes(card) {
+    return card.issues.filter((i) => i.fix && i.fix.pairs).length;
+  }
+
   // ---------------------------------------------------------------------
   // The checks, from each method guide's own checklist
   // ---------------------------------------------------------------------
@@ -1118,17 +1189,29 @@
   // word used often is never flagged on its own. Only doubled words, the
   // same sentence or phrase twice, and the same opener again and again are.
 
+  // Each plain swap: the pattern, what to suggest, and the word to put in.
+  const verbForm = (base, past, ing) => (m) => (/ing$/i.test(m) ? ing : /ed$/i.test(m) ? past : /es$/i.test(m) ? base + "s" : base);
   const PLAIN_WORDS = [
-    [/\butiliz(?:e|es|ed|ing)\b/gi, "use"], [/\bcommenc(?:e|es|ed|ing)\b/gi, "start"],
-    [/\bin order to\b/gi, "to"], [/\bprior to\b/gi, "before"], [/\bsubsequent to\b/gi, "after"],
-    [/\bat this point in time\b|\bat the present time\b/gi, "now"], [/\bdue to the fact that\b/gi, "because"],
-    [/\bin the event that\b/gi, "if"], [/\bwith regards? to\b|\bin regards? to\b/gi, "about"],
-    [/\bin the near future\b/gi, "soon"], [/\b(?:was|were) able to\b/gi, "could, or just the verb"],
-    [/\bfor the purpose of\b/gi, "for"], [/\bin spite of the fact that\b/gi, "although"],
-    [/\bendeavou?r(?:s|ed)? to\b/gi, "try to"], [/\bfacilitat(?:e|es|ed|ing)\b/gi, "help"],
-    [/\bascertain\b/gi, "find out"], [/\bkindly\b/gi, "please"], [/\bat a later date\b/gi, "later"],
+    [/\butiliz(?:e|es|ed|ing)\b/gi, "use", verbForm("use", "used", "using")],
+    [/\bcommenc(?:e|es|ed|ing)\b/gi, "start", verbForm("start", "started", "starting")],
+    [/\bin order to\b/gi, "to", "to"], [/\bprior to\b/gi, "before", "before"], [/\bsubsequent to\b/gi, "after", "after"],
+    [/\bat this point in time\b|\bat the present time\b/gi, "now", "now"], [/\bdue to the fact that\b/gi, "because", "because"],
+    [/\bin the event that\b/gi, "if", "if"], [/\bwith regards? to\b|\bin regards? to\b/gi, "about", "about"],
+    [/\bin the near future\b/gi, "soon", "soon"], [/\b(?:was|were) able to\b/gi, "could, or just the verb", "could"],
+    [/\bfor the purpose of\b/gi, "for", "for"], [/\bin spite of the fact that\b/gi, "although", "although"],
+    [/\bendeavou?r(?:s|ed)? to\b/gi, "try to", "try to"], [/\bfacilitat(?:e|es|ed|ing)\b/gi, "help", verbForm("help", "helped", "helping")],
+    [/\bascertain\b/gi, "find out", "find out"], [/\bkindly\b/gi, "please", "please"], [/\bat a later date\b/gi, "later", "later"],
   ];
-  const DOUBLE_NEGATIVE = /\b(?:not|n't|never)\s+(?:uncommon|unlike|unusual|unreasonable|unhappy|unimportant|insignificant|impossible|without|nothing|none|nobody|no)\b|\b(?:can|could)n't hardly\b/gi;
+  const DOUBLE_NEGATIVE = /(?:\b(\w+)n't|\bnot|\bnever)\s+(uncommon|unlike|unusual|unreasonable|unhappy|unimportant|insignificant|impossible|without|nothing|none|nobody|no)\b|\b(can|could)n't hardly\b/gi;
+  const POSITIVE = { uncommon: "common", unlike: "like", unusual: "usual", unreasonable: "reasonable", unhappy: "happy",
+    unimportant: "important", insignificant: "significant", impossible: "possible" };
+
+  // A fix is a list of find-and-replace pairs on the line (or on every line,
+  // for a consistency fix), or a choice of such lists when the writer has to
+  // decide (which spelling, the day or the date).
+  const matchCase = (src, rep) => (/^[A-Z](?![A-Z])/.test(src) && rep ? rep.charAt(0).toUpperCase() + rep.slice(1) : rep);
+  const swap = (find, replace, scope) => ({ pairs: [{ find, replace }], scope: scope || "line" });
+  const cut = (find) => swap(find, "");
   const ANNOUNCING = /^(?:quick question|just checking in|checking in|following up|just following up|a quick note|just a quick note|touching base|just touching base)\b/i;
   const HEDGES = /\b(?:i think|i guess|i feel like|maybe|perhaps|possibly|kind of|sort of|a little|a bit|somewhat|just|might)\b/gi;
   const HARSH = /\b(?:you need to|you must|immediately|asap|unacceptable|ridiculous|obviously|i shouldn'?t have to|for the last time|i demand)\b/gi;
@@ -1143,17 +1226,17 @@
     let body = src;
     for (const [a, b] of mask || []) body = body.slice(0, a) + " ".repeat(Math.max(0, b - a)) + body.slice(b);
     const out = [];
-    const add = (code, kind, label, detail, start, end) => out.push({ code, kind, label, detail, match: src.slice(start, end), start, end });
+    const add = (code, kind, label, detail, start, end, fix) => out.push({ code, kind, label, detail, match: src.slice(start, end), start, end, fix: fix || null });
     let m;
 
     // Repeats.
     const dbl = /\b([A-Za-z]+)\s+\1\b/gi;
     while ((m = dbl.exec(body))) {
       if (KEEP_DOUBLE.has(m[1].toLowerCase()) && m[1].toLowerCase() !== "is") continue;
-      add("P1", "repeat", "Doubled word", "Delete the extra one.", m.index, m.index + m[0].length);
+      add("P1", "repeat", "Doubled word", "Delete the extra one.", m.index, m.index + m[0].length, swap(m[0], m[1]));
     }
     const punct = /([,;:?])\1+|(?<![.])\.\.(?![.])/g;
-    while ((m = punct.exec(body))) add("P2", "repeat", "Doubled punctuation", "Keep one.", m.index, m.index + m[0].length);
+    while ((m = punct.exec(body))) add("P2", "repeat", "Doubled punctuation", "Keep one.", m.index, m.index + m[0].length, swap(m[0], m[0].charAt(0)));
 
     // Sentences, with where each one starts.
     const sents = [];
@@ -1169,7 +1252,7 @@
     for (let i = 0; i < sents.length; i++) {
       for (let j = i + 1; j < sents.length; j++) {
         if (keyStems(sents[i].text).size >= 3 && keyStems(sents[j].text).size >= 3 && overlap(sents[i].text, sents[j].text) >= 0.85) {
-          add("P3", "repeat", "Says the same thing twice", "Keep the stronger sentence and cut the other.", sents[j].start, sents[j].end);
+          add("P3", "repeat", "Says the same thing twice", "Keep the stronger sentence and cut the other.", sents[j].start, sents[j].end, cut(sents[j].text));
           restated.add(i); restated.add(j);
         }
       }
@@ -1221,32 +1304,65 @@
 
     // Clarity.
     for (const s of sents) {
-      if (s.n > 30) add("P6", "clarity", "Long sentence (" + s.n + " words)", "Split it where the second idea starts.", s.start, Math.min(s.end, s.start + 60));
+      if (s.n > 30) {
+        const parts = splitClauses(s.text);
+        add("P6", "clarity", "Long sentence (" + s.n + " words)", "Split it where the second idea starts.", s.start, Math.min(s.end, s.start + 60),
+          parts.length > 1 ? Object.assign(swap(s.text, parts.join(" ")), { say: "Split it into " + parts.length + " sentences" }) : null);
+      }
     }
-    for (const [re, plain] of PLAIN_WORDS) {
+    for (const [re, plain, to] of PLAIN_WORDS) {
       re.lastIndex = 0;
-      while ((m = re.exec(body))) add("P7", "clarity", "Wordy phrase", "Use the plain word: " + plain + ".", m.index, m.index + m[0].length);
+      while ((m = re.exec(body))) {
+        const word = typeof to === "function" ? to(m[0]) : to;
+        add("P7", "clarity", "Wordy phrase", "Use the plain word: " + plain + ".", m.index, m.index + m[0].length, swap(m[0], matchCase(m[0], word)));
+      }
     }
     DOUBLE_NEGATIVE.lastIndex = 0;
-    while ((m = DOUBLE_NEGATIVE.exec(body))) add("P8", "clarity", "Double negative", "Say it positively. Not “not uncommon” but “common”.", m.index, m.index + m[0].length);
+    while ((m = DOUBLE_NEGATIVE.exec(body))) {
+      let fix = null;
+      if (m[3]) fix = swap(m[0], m[3] + " hardly");
+      else if (POSITIVE[m[2].toLowerCase()]) fix = swap(m[0], matchCase(m[0], (m[1] ? m[1] + " " : "") + POSITIVE[m[2].toLowerCase()]));
+      add("P8", "clarity", "Double negative", "Say it positively. Not “not uncommon” but “common”.", m.index, m.index + m[0].length, fix);
+    }
     if (sents.length && ANNOUNCING.test(sents[0].text)) {
-      add("P9", "clarity", "The first line announces instead of saying", "Lead with the question or the news itself.", sents[0].start, sents[0].start + sents[0].text.match(ANNOUNCING)[0].length);
+      const opener = sents[0].text.match(new RegExp(ANNOUNCING.source + "[\\s:,.!?]*", "i"))[0];
+      add("P9", "clarity", "The first line announces instead of saying", "Lead with the question or the news itself.", sents[0].start, sents[0].start + sents[0].text.match(ANNOUNCING)[0].length,
+        opener.trim().length < sents[0].text.trim().length ? cut(opener) : null);
     }
     const capitalized = /[.!?]\s+[A-Z]/.test(body) || /^[^a-z]*[A-Z]/.test(body.trim());
     const lowerI = /(?<![\w'’])i(?=\s|['’](?:m|ll|ve|d)\b)/g;
-    if (capitalized) while ((m = lowerI.exec(body))) add("P10", "clarity", "Lowercase “i”", "Capitalize it.", m.index, m.index + 1);
+    if (capitalized) {
+      while ((m = lowerI.exec(body))) {
+        const ctx = body.slice(m.index, m.index + 4).match(/^i(?:['’](?:m|ll|ve|d))?\b/)[0];
+        // Only a standalone "i" (or "i'm"), never the start of "it" or "is".
+        add("P10", "clarity", "Lowercase “i”", "Capitalize it.", m.index, m.index + 1,
+          Object.assign(swap(new RegExp("(^|\\s)i(?=['’]|\\s|$)", "g"), "$1I"), { say: "Capitalize “" + ctx + "”" }));
+      }
+    }
 
     // Tone.
     const caps = /\b[A-Z]{4,}\b/g;
-    while ((m = caps.exec(body))) if (!ACRONYMS.has(m[0])) add("T1", "tone", "All caps reads as shouting", "Use normal case. A date or a number makes the point better.", m.index, m.index + m[0].length);
+    while ((m = caps.exec(body))) {
+      if (ACRONYMS.has(m[0])) continue;
+      const startsSentence = /(?:^|[.!?]\s+)$/.test(body.slice(0, m.index).replace(/\s+$/, " ").slice(-3)) || m.index === body.search(/\S/);
+      const lower = m[0].toLowerCase();
+      add("T1", "tone", "All caps reads as shouting", "Use normal case. A date or a number makes the point better.", m.index, m.index + m[0].length,
+        swap(m[0], startsSentence ? lower.charAt(0).toUpperCase() + lower.slice(1) : lower));
+    }
     const bangs = /!{2,}|\?!|!\?/g;
-    while ((m = bangs.exec(body))) add("T1", "tone", "Stacked punctuation reads as shouting", "One mark is enough.", m.index, m.index + m[0].length);
+    while ((m = bangs.exec(body))) add("T1", "tone", "Stacked punctuation reads as shouting", "One mark is enough.", m.index, m.index + m[0].length, swap(m[0], m[0].includes("?") ? "?" : "!"));
     const excl = [];
     const ere = /!+/g;
     while ((m = ere.exec(body))) excl.push(m.index);
     if (excl.length >= 2) {
-      const at = excl[1];
-      add("T2", "tone", "More than one exclamation point", "One is plenty. Let the words carry the energy.", at, at + 1);
+      // Keep the last one, usually the warm one ("Thanks!"); the others become periods.
+      const esc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const pairs = excl.slice(0, -1).map((at) => {
+        const prefix = body.slice(Math.max(0, at - 16), at).replace(/^\S*\s/, "");
+        return { find: new RegExp(esc(prefix) + "!+"), replace: prefix + "." };
+      });
+      add("T2", "tone", "More than one exclamation point", "One is plenty. Let the words carry the energy.", excl[0], excl[0] + 1,
+        { pairs, scope: "all", say: "Keep the last exclamation point and turn the others into periods" });
     }
     const sorry = [];
     APOLOGY.lastIndex = 0;
@@ -1256,12 +1372,26 @@
     HEDGES.lastIndex = 0;
     while ((m = HEDGES.exec(body))) hedges.push(m);
     if (hedges.length >= 3) {
-      for (const h of hedges) add("T4", "tone", "Hedges pile up", "Commit. Keep a hedge that reports real doubt and cut the rest.", h.index, h.index + h[0].length);
+      // Filler hedges go; the ones that report real doubt ("I think", "might") stay.
+      const KEEP = /^(?:i think|might|possibly)$/i;
+      for (const h of hedges) {
+        add("T4", "tone", "Hedges pile up", "Commit. Keep a hedge that reports real doubt and cut the rest.", h.index, h.index + h[0].length,
+          KEEP.test(h[0]) ? null : cut(h[0]));
+      }
     }
+    const SOFTER = { asap: "soon", immediately: "soon", "you need to": "please", "you must": "please", obviously: "", "for the last time": "" };
     HARSH.lastIndex = 0;
-    while ((m = HARSH.exec(body))) add("T5", "tone", "Could read as harsh", "Say what you need and by when, without the edge.", m.index, m.index + m[0].length);
+    while ((m = HARSH.exec(body))) {
+      const soft = SOFTER[m[0].toLowerCase()];
+      add("T5", "tone", "Could read as harsh", "Say what you need and by when, without the edge.", m.index, m.index + m[0].length,
+        soft === undefined ? null : soft ? swap(m[0], matchCase(m[0], soft)) : cut(m[0]));
+    }
     SNIPPY.lastIndex = 0;
-    while ((m = SNIPPY.exec(body))) add("T6", "tone", "Could read as passive-aggressive", "Restate the ask plainly, as if for the first time.", m.index, m.index + m[0].length);
+    while ((m = SNIPPY.exec(body))) {
+      const tail = body.slice(m.index + m[0].length).match(/^[,:;]?\s*/)[0];
+      add("T6", "tone", "Could read as passive-aggressive", "Restate the ask plainly, as if for the first time.", m.index, m.index + m[0].length,
+        /not sure if you saw/i.test(m[0]) ? null : cut(m[0] + tail));
+    }
 
     out.push(...consistency(body), ...factCheck(body, polish.today));
     out.sort((a, b) => a.start - b.start);
@@ -1312,10 +1442,29 @@
         }
         const said = DAYS.findIndex((x) => x.startsWith(dayWord.toLowerCase()));
         if (said !== wd) {
-          const actual = DAYS[wd].charAt(0).toUpperCase() + DAYS[wd].slice(1);
+          const cap = (w) => w.charAt(0).toUpperCase() + w.slice(1);
+          const actual = cap(DAYS[wd]);
+          const dayText = m[0].match(new RegExp(DAY_RX, "i"))[0];
+          // Or keep the day and move the date to the nearest one that falls on it.
+          const ahead = (said - wd + 7) % 7;
+          const shift = ahead <= 3 ? ahead : ahead - 7;
+          const moved = new Date(Date.UTC(year, month - 1, day + shift));
+          const nm = moved.getUTCMonth() + 1;
+          const nd = moved.getUTCDate();
+          let newDate;
+          if (/^\d/.test(m[0]) || /\d{1,2}\/\d{1,2}/.test(m[0])) {
+            newDate = m[0].replace(/(\d{1,2})\/(\d{1,2})/, nm + "/" + nd);
+          } else {
+            const names = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            newDate = m[0].replace(new RegExp(MONTH_RX + "\\s+\\d{1,2}(st|nd|rd|th)?", "i"), names[nm - 1] + " " + nd);
+          }
           out.push({ code: "F1", kind: "facts", label: "The day doesn't match the date",
             detail: "In " + year + ", " + month + "/" + day + " falls on a " + actual + ". Check which one you meant.",
-            match: m[0], start: m.index, end: m.index + m[0].length });
+            match: m[0], start: m.index, end: m.index + m[0].length,
+            fix: { choices: [
+              { label: "Make it " + actual, pairs: [{ find: m[0], replace: m[0].replace(dayText, matchCase(dayText, DAYS[wd])) }], scope: "all" },
+              { label: "Keep " + cap(DAYS[said]) + ", move the date to " + nm + "/" + nd, pairs: [{ find: m[0], replace: newDate }], scope: "all" },
+            ] } });
         }
       }
     }
@@ -1357,25 +1506,55 @@
       for (let j = i + 1; j < list.length; j++) {
         const a = list[i], b = list[j];
         if (a[0] !== b[0] || Math.min(a.length, b.length) < 4 || !editDistance1(a, b)) continue;
-        if (!names.has(a) && !names.has(b)) continue;
+        // A name is capitalized mid-sentence, or never appears in lowercase at all.
+        const nameLike = (w) => names.has(w) || !new RegExp("\\b" + w.toLowerCase() + "\\b").test(src);
+        if (!nameLike(a) || !nameLike(b)) continue;
+        // In one sentence ("Dana and Dena"), they're two people, not a typo.
+        const together = src.split(/[.!?\n]+/).some((sentence) => new RegExp("\\b" + a + "\\b").test(sentence) && new RegExp("\\b" + b + "\\b").test(sentence));
+        if (together) continue;
         const key = [a, b].sort().join("/");
         if (done.has(key)) continue;
         done.add(key);
         const at = caps.get(b);
-        out.push({ code: "K1", kind: "repeat", label: "A name spelled two ways", detail: a + " and " + b + ". Pick one.", match: b, start: at, end: at + b.length });
+        const wordRe = (w) => new RegExp("\\b" + w + "\\b", "g");
+        out.push({ code: "K1", kind: "repeat", label: "A name spelled two ways", detail: a + " and " + b + ". Pick one.", match: b, start: at, end: at + b.length,
+          fix: { choices: [
+            { label: "Use " + a, pairs: [{ find: wordRe(b), replace: a }], scope: "all" },
+            { label: "Use " + b, pairs: [{ find: wordRe(a), replace: b }], scope: "all" },
+          ] } });
       }
     }
-    const styles = (patterns, code, label) => {
+    const styles = (patterns, code, label, restyle) => {
       const found = [];
       patterns.forEach((re, k) => { re.lastIndex = 0; let x; while ((x = re.exec(src))) found.push({ k, x }); });
+      found.sort((p, q) => p.x.index - q.x.index);
       const kinds = new Set(found.map((f) => f.k));
       if (kinds.size > 1) {
         const second = found.find((f) => f.k !== found[0].k);
-        out.push({ code, kind: "repeat", label, detail: "Pick one style and use it throughout.", match: second.x[0], start: second.x.index, end: second.x.index + second.x[0].length });
+        // Match everything to the style used first.
+        const pairs = restyle ? found.map((f) => {
+          let replace = restyle(f.x[0], found[0].x[0]);
+          // "8 p.m. I think" -> "8pm. I think": the period also ended the sentence.
+          const after = src.slice(f.x.index + f.x[0].length);
+          if (replace && /\.$/.test(f.x[0]) && !/\.$/.test(replace) && /^(?:\s+[A-Z]|\s*$)/.test(after)) replace += ".";
+          return { find: f.x[0], replace };
+        }).filter((pr) => pr.replace && pr.replace !== pr.find) : [];
+        out.push({ code, kind: "repeat", label, detail: "Pick one style and use it throughout.", match: second.x[0], start: second.x.index, end: second.x.index + second.x[0].length,
+          fix: pairs.length ? { pairs, scope: "all" } : null });
       }
     };
-    styles([/\b\d{1,2}(?::\d{2})?\s?(?:am|pm)\b/g, /\b\d{1,2}(?::\d{2})?\s?(?:a\.m\.|p\.m\.)/g, /\b\d{1,2}(?::\d{2})?\s?(?:AM|PM)\b/g], "K2", "Times written two ways");
-    styles([/\$\d{1,3}(?:,\d{3})+(?:\.\d+)?\b/g, /\$\d{4,}(?:\.\d+)?\b/g], "K3", "Amounts written two ways");
+    const timeLike = (t, model) => {
+      const m1 = /^(\d{1,2})(?::(\d{2}))?\s?(a\.?m\.?|p\.?m\.?)$/i.exec(t);
+      const m2 = /^\d{1,2}(?::\d{2})?(\s?)(a\.m\.|p\.m\.|am|pm|AM|PM)$/.exec(model);
+      if (!m1 || !m2) return null;
+      const half = m1[3].toLowerCase().startsWith("a") ? "a" : "p";
+      const suffix = m2[2] === "a.m." || m2[2] === "p.m." ? half + ".m." : /[AP]M/.test(m2[2]) ? half.toUpperCase() + "M" : half + "m";
+      return m1[1] + (m1[2] ? ":" + m1[2] : "") + m2[1] + suffix;
+    };
+    // Amounts always take the standard style, with commas.
+    const amountLike = (t) => t.replace(/\B(?=(\d{3})+(?!\d))/g, (x, y, i) => (/\./.test(t.slice(0, i)) ? "" : ","));
+    styles([/\b\d{1,2}(?::\d{2})?\s?(?:am|pm)\b/g, /\b\d{1,2}(?::\d{2})?\s?(?:a\.m\.|p\.m\.)/g, /\b\d{1,2}(?::\d{2})?\s?(?:AM|PM)\b/g], "K2", "Times written two ways", timeLike);
+    styles([/\$\d{1,3}(?:,\d{3})+(?:\.\d+)?\b/g, /\$\d{4,}(?:\.\d+)?\b/g], "K3", "Amounts written two ways", amountLike);
     styles([/\b\d{1,2}\/\d{1,2}\b/g, new RegExp("\\b" + MONTH_RX + "\\s+\\d{1,2}(?:st|nd|rd|th)?\\b", "gi")], "K4", "Dates written two ways");
     return out;
   }
@@ -1512,19 +1691,24 @@
       if (part.field === "subject" && !st.isEmail) return;
       const c = card(part.field, part.index);
       const same = c.issues.find((x) => x.title === issue.title && x.desk === issue.desk);
-      if (same) (issue.quotes || []).forEach((q) => { if (!same.quotes.includes(q)) same.quotes.push(q); });
-      else c.issues.push(Object.assign({}, issue, { quotes: (issue.quotes || []).slice() }));
+      if (same) {
+        (issue.quotes || []).forEach((q) => { if (!same.quotes.includes(q)) same.quotes.push(q); });
+        if (issue.fix && issue.fix.pairs) {
+          if (same.fix && same.fix.pairs) same.fix = { pairs: same.fix.pairs.concat(issue.fix.pairs), scope: same.fix.scope };
+          else if (!same.fix) same.fix = issue.fix;
+        }
+      } else c.issues.push(Object.assign({}, issue, { quotes: (issue.quotes || []).slice() }));
     };
     const scanned = TellScan.scan(built.text, { wwb: st.methods.wwb });
     for (const f of scanned.findings) {
       if (f.severity === "weak") continue;
-      const issue = { title: f.label, detail: plainFix(f), quotes: f.match ? [f.match.trim()] : [], method: f.family === "WWB" ? "wwb" : "audit", desk: f.family === "WWB" ? "line" : "tells" };
+      const issue = { title: f.label, detail: plainFix(f), quotes: f.match ? [f.match.trim()] : [], method: f.family === "WWB" ? "wwb" : "audit", desk: f.family === "WWB" ? "line" : "tells", fix: scannerFix(f) };
       if (typeof f.start === "number") put(locate(f.start), issue);
       else if (f.spans && f.spans.length) put(locate(f.spans[0].start), issue);
       else if (f.code !== "W5") card("general", 0).issues.push(Object.assign(issue, { desk: "line" }));
     }
     for (const f of polish(built.text, frameParts(built))) {
-      put(locate(f.start), { title: f.label, detail: f.detail, quotes: f.match.trim() ? [f.match.trim()] : [], method: "polish", desk: f.desk });
+      put(locate(f.start), { title: f.label, detail: f.detail, quotes: f.match.trim() ? [f.match.trim()] : [], method: "polish", desk: f.desk, fix: f.fix || null });
     }
     if (st.methods.data) {
       const vague = new RegExp(VAGUE_AMOUNT.source, "gi");
@@ -1631,7 +1815,7 @@
     METHODS, METHOD_NAMES, METHOD_JOBS, EXAMPLES, TRIMS, DESKS, DESK_ORDER, deskReport, factCheck, consistency,
     words, wordCount, splitSentences, splitClauses, parseDraft, describe, listItems, isCloser,
     emptyState, methodsFrom, recommend, suggest, switchMethod, usedPieces,
-    applyTrims, bakeTrims, assemble, partAt, meaningRatio, tellCount, plainFix, check, diagnose, tasks, fieldValue, setField,
+    applyTrims, bakeTrims, assemble, partAt, applyPairs, applyFixes, autoFixes, meaningRatio, tellCount, plainFix, check, diagnose, tasks, fieldValue, setField,
     compare, slotCopy, overlap, polish, polishText, polishSummary, frameMask,
   };
   if (typeof module !== "undefined" && module.exports) module.exports = api;

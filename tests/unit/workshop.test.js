@@ -435,7 +435,9 @@ test("repeating the right word is fine; only restatements and samey openers are 
 });
 
 test("the copy editor wants one spelling and one style throughout", () => {
-  assert.deepEqual(at("Dana will bring wine on Saturday, and Dena will bring dessert."), ["K1 copy Dena"]);
+  assert.deepEqual(at("Dana will bring wine on Saturday. Then Dena will bring dessert."), ["K1 copy Dena"]);
+  assert.deepEqual(at("Dana will bring wine. Dena will bring dessert."), ["K1 copy Dena"]);
+  assert.deepEqual(at("Dana and Dena will both come."), [], "two names in one sentence are two people");
   assert.deepEqual(at("Dinner at 7pm, dessert at 8 p.m."), ["K2 copy 8 p.m."]);
   assert.deepEqual(at("The quote was $1,800 and the bill was $1950."), ["K3 copy $1950"]);
 });
@@ -515,4 +517,54 @@ test("a bare 'Quick question.' is filler, and one line's hedges make one note", 
   const hedges = W.tasks(st, p).flatMap((c) => c.issues).filter((i) => i.title === "Hedges pile up");
   assert.equal(hedges.length, 1);
   assert.deepEqual(hedges[0].quotes, ["I think", "might", "a bit", "maybe"]);
+});
+
+// ---------------------------------------------------------------------------
+// Applying fixes
+
+const fixed = (text, picks) => {
+  const st = state({ point: text });
+  let s = st;
+  for (let i = 0; i < 6; i++) {
+    const card = W.tasks(s, null).find((c) => c.field === "point");
+    if (!card) break;
+    const choose = {};
+    card.issues.forEach((iss, k) => { if (iss.fix && iss.fix.choices) choose[k] = picks && picks[iss.title] !== undefined ? picks[iss.title] : 0; });
+    const r = W.applyFixes(s, card, choose);
+    if (!r.applied) break;
+    s = r.state;
+  }
+  return s.point;
+};
+
+test("Apply makes the mechanical fixes itself", () => {
+  assert.equal(fixed("Could you bring the the dessert,, in order to help?"), "Could you bring the dessert, to help?");
+  assert.equal(fixed("Quick question: could you call prior to Friday?"), "Could you call before Friday?");
+  assert.equal(fixed("Could you refund it ASAP? It isn't uncommon, and i will wait."), "Could you refund it soon? It is common, and I will wait.");
+  assert.equal(fixed("Per my last email, could you send the $1950 refund we discussed for the $1,800 deposit?"), "Could you send the $1,950 refund we discussed for the $1,800 deposit?");
+  assert.equal(fixed("We loved it!! Thanks for the dinner on 11/14!"), "We loved it. Thanks for the dinner on 11/14!");
+});
+
+test("choices apply the option the writer picks", () => {
+  const facts = (pick) => fixed("Could you come by Friday, 11/7/2026?", { "The day doesn't match the date": pick });
+  assert.equal(facts(0), "Could you come by Saturday, 11/7/2026?");
+  assert.equal(facts(1), "Could you come by Friday, 11/6/2026?");
+  const st = state({ point: "Dana will bring wine on 11/14.", support: ["Then Dena will bring dessert."] });
+  const card = W.tasks(st, null).find((c) => c.issues.some((i) => i.title === "A name spelled two ways"));
+  const k = card.issues.findIndex((i) => i.title === "A name spelled two ways");
+  const r = W.applyFixes(st, card, { [k]: 0 });
+  assert.equal(W.assemble(r.state).text, "Dana will bring wine on 11/14. Then Dana will bring dessert.");
+});
+
+test("a note that needs the writer's words has no automatic fix", () => {
+  const { st, parsed } = firstPass("pyramid");
+  const card = W.tasks(st, parsed)[0];
+  assert.equal(W.autoFixes(card), 0);
+  assert.equal(W.applyFixes(st, card).applied, 0);
+});
+
+test("restyling a time keeps the period that ended the sentence", () => {
+  const t = "Could you come at 7pm? Dana arrives at 8 p.m. I think that works.";
+  const f = W.polish(t).find((x) => x.code === "K2");
+  assert.equal(W.applyPairs(t, f.fix.pairs), "Could you come at 7pm? Dana arrives at 8pm. I think that works.");
 });
