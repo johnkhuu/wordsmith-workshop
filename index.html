@@ -4,8 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Wordsmith Workshop</title>
-<meta name="description" content="A Claude skill for personal writing. It builds every piece on Minto's pyramid, then scans it for the patterns that make writing read like a chatbot wrote it.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%232450C0'/%3E%3Cpath d='M14 18h9l5 20 4-14h4l4 14 5-20h5l-8 30h-5l-5-16-5 16h-5z' fill='%23fff'/%3E%3C/svg%3E">
+<meta name="description" content="A Claude skill for personal writing. It puts your point first, backs it with real details, and checks every line for the patterns that make writing read like a chatbot wrote it.">
+<meta name="theme-color" content="#11172A">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2311172A'/%3E%3Cpath d='M14 50l6-18 26-26a5 5 0 0 1 7 0l4 4a5 5 0 0 1 0 7L31 43z' fill='%232F5BEA'/%3E%3Cpath d='M14 50l6-18 11 11z' fill='%23F2D2A9'/%3E%3Cpath d='M46 6a5 5 0 0 1 7 0l4 4a5 5 0 0 1 0 7l-3 3-11-11z' fill='%23FFE27A'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Caveat:wght@600;700&family=Courier+Prime:wght@400;700&family=Gloock&display=swap">
@@ -14,180 +15,286 @@
 <body>
 
 <header class="site-head">
-  <div class="wrap head-row">
-    <a class="brand" href="#top">Wordsmith Workshop</a>
-    <nav class="site-nav" aria-label="Sections">
-      <a href="#film">Film</a>
-      <a href="#how">How it works</a>
-      <a href="#scanner">Scanner</a>
-      <a href="#methods">Methods</a>
-      <a href="#formats">Formats</a>
-      <a href="#craft">Craft</a>
-    </nav>
-  </div>
+    <div class="wrap head-row">
+      <a class="brand" href="#top"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M5 27l3.2-9.4L22 3.8a2.7 2.7 0 0 1 3.8 0l2.4 2.4a2.7 2.7 0 0 1 0 3.8L14.4 23.8z" fill="#2F5BEA"/><path d="M5 27l3.2-9.4 6.2 6.2z" fill="#F2D2A9"/><path d="M5 27l1.4-4.1 2.7 2.7z" fill="#151B2D"/><path d="M22 3.8a2.7 2.7 0 0 1 3.8 0l2.4 2.4a2.7 2.7 0 0 1 0 3.8l-1.6 1.6-6.2-6.2z" fill="#EE8F9C"/></svg><span>Wordsmith Workshop</span></a>
+      <nav class="site-nav" aria-label="Sections">
+        <a href="#film">Film</a>
+        <a href="#how">How it works</a>
+        <a href="#methods">Methods</a>
+        <a href="#scanner">Try it</a>
+      </nav>
+    </div>
 </header>
 
 <main id="top">
+  <section class="hero-body" aria-labelledby="hero-title">
+    <div class="wrap hero-grid">
+      <p class="eyebrow-tape">A Claude skill for personal writing</p>
+      <h1 id="hero-title">Lead with <em>the point.</em> Back it with real details.</h1>
+      <p class="lede">Wordsmith Workshop drafts and checks the writing you send as yourself: a note to the contractor, a complaint to the airline, a toast, a card. Every piece puts your point first and comes back sounding like you.</p>
 
-  <section class="hero">
-    <div class="wrap">
-      <p class="eyebrow">A Claude skill for personal writing</p>
-      <h1>Lead with the point. Back it with real details.</h1>
-      <p class="lede">Wordsmith Workshop drafts and audits the writing you send as yourself: a note to the contractor, a complaint to the airline, a toast, a card. Every piece starts from Minto's pyramid, and the skill scans every draft for the patterns that make writing read like a chatbot wrote it.</p>
+      <div class="film-frame" id="film">
+        <p class="scribble scribble-sound" aria-hidden="true">sound on!</p>
+        <svg class="scribble-arrow" viewBox="0 0 120 80" aria-hidden="true" focusable="false"><path d="M8 10 C 40 4, 86 18, 104 62" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><path d="M92 54 L104 64 L110 48" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <figure class="film" data-film data-vo-base="assets/film/vo/">
+          <div class="film-stage">
+            <canvas class="film-canvas" width="1920" height="1080" aria-hidden="true"></canvas>
+            <p class="film-caption" hidden></p>
+            <button class="film-big-play" type="button" aria-label="Play the film, 30 seconds, with sound">
+              <span class="film-big-play-icon" aria-hidden="true"></span>
+              <span class="film-big-play-text">Play the film</span>
+              <span class="film-big-play-meta">0:30 &middot; sound on</span>
+            </button>
+            <p class="film-status" role="status" hidden></p>
+          </div>
+          <div class="film-bar">
+            <button class="film-btn film-toggle" type="button" aria-label="Play" data-state="play">
+              <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12-7.5z"/></svg>
+              <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5h4v15H6zM14 4.5h4v15h-4z"/></svg>
+              <svg class="i-replay" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5V1.5L7 6l5 4.5V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg>
+            </button>
+            <input class="film-seek" type="range" min="0" max="29.5" step="0.01" value="0" aria-label="Seek through the film">
+            <span class="film-time">0:00 / 0:30</span>
+            <button class="film-btn film-cc" type="button" aria-pressed="true" aria-label="Captions">CC</button>
+            <button class="film-btn film-mute" type="button" aria-pressed="false" aria-label="Mute">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path class="i-speaker" d="M4 9h4l5-4v14l-5-4H4z"/><path class="i-waves" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="i-slash" d="M16 9l6 6M22 9l-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+          <figcaption>
+            <details class="film-transcript">
+              <summary>Read the transcript</summary>
+              <ol>
+                <li><span class="who">Narrator</span> You've read this email a thousand times.</li>
+                <li><span class="who">Chatbot</span> <q>I hope this message finds you well!</q></li>
+                <li><span class="who">Chatbot</span> <q>Your kindness is a vibrant testament.</q></li>
+                <li><span class="who">Narrator</span> Words that could belong to anyone.</li>
+                <li><span class="who">Narrator</span> Wordsmith Workshop puts your point first, and backs it with real details.</li>
+                <li><span class="who">Narrator</span> It shapes each piece with methods real editors use,</li>
+                <li><span class="who">Narrator</span> then checks every line for the tells that give a chatbot away.</li>
+                <li><span class="who">Narrator</span> Now it sounds like you.</li>
+                <li><span class="who">Narrator</span> Wordsmith Workshop. Lead with the point.</li>
+              </ol>
+              <p class="film-credit">Voices made with Kokoro, an open-source speech model. Music and sound effects are synthesized in the browser.</p>
+            </details>
+          </figcaption>
+        </figure>
+      </div>
+
       <div class="cta-row">
         <a class="btn btn-primary" href="#scanner">Scan a draft</a>
-        <a class="btn btn-ghost" href="#film">Watch the film (0:30)</a>
+        <a class="btn btn-ghost" href="#how">How it works</a>
       </div>
-
-      <div class="sheets">
-        <figure class="sheet sheet-before">
-          <figcaption class="sheet-tag">Before</figcaption>
-          <div class="sheet-body">
-            <p>Hi Mark, <del>I hope you're doing well. I wanted to reach out because things have been a bit hectic on our end lately and our schedule has been unpredictable.</del> <del>Last week we talked about the deck repair starting on the 14th, and that could still work, but</del> my in-laws are visiting that week and the backyard will be pretty busy. <span class="circled">Would it be possible to push it back?</span></p>
-          </div>
-          <p class="margin-note">The ask is sentence four. Lead with it, and give a date.</p>
-        </figure>
-        <figure class="sheet sheet-after">
-          <figcaption class="sheet-tag">After</figcaption>
-          <div class="sheet-body">
-            <p>Hi Mark,</p>
-            <p><mark class="lead-line">Could we move the deck start from 11/14 to 11/21?</mark> My in-laws are staying with us that week and the yard will be full.</p>
-            <p>Anything from 11/21 through 11/30 is wide open, so pick whatever start date works best for you.</p>
-            <p>Thanks!</p>
-          </div>
-        </figure>
-      </div>
-      <p class="sheets-caption">The ask moved from sentence four to sentence one. The vague context went, a fact that makes yes easy came in, and the email got about a third shorter.</p>
     </div>
+    <svg class="tear tear-hero" viewBox="0 0 1440 40" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M0,40 L0,14 L17,20 L32,18 L54,9 L78,9 L101,9 L116,16 L147,10 L165,19 L198,18 L220,26 L235,23 L255,11 L271,14 L302,11 L327,20 L349,18 L364,9 L382,20 L405,14 L430,16 L450,22 L478,12 L504,17 L535,21 L555,26 L572,16 L601,11 L624,9 L652,22 L677,24 L698,21 L723,18 L747,23 L779,17 L807,9 L835,20 L869,23 L888,15 L916,8 L939,11 L955,9 L985,10 L1004,15 L1035,9 L1058,18 L1090,23 L1121,13 L1143,14 L1175,25 L1192,11 L1211,12 L1234,19 L1254,8 L1276,15 L1301,25 L1329,17 L1355,20 L1370,24 L1400,24 L1430,15 L1440,18 L1440,40 Z"/></svg>
   </section>
 
-
-  <section class="band band-film" id="film" aria-labelledby="film-title">
+  <section class="band band-how" id="how" aria-labelledby="how-title">
     <div class="wrap">
-      <header class="section-head section-head-wide">
-        <p class="eyebrow">The film</p>
-        <h2 id="film-title">Thirty seconds with the blue pencil</h2>
-        <p>Turn the sound on. A chatbot email meets an editor's pencil, and what's left sounds like a person.</p>
-      </header>
-
-      <figure class="film" data-film data-vo-base="assets/film/vo/">
-        <div class="film-stage">
-          <canvas class="film-canvas" width="1920" height="1080" aria-hidden="true"></canvas>
-          <p class="film-caption" hidden></p>
-          <button class="film-big-play" type="button" aria-label="Play the film, 30 seconds, with sound">
-            <span class="film-big-play-icon" aria-hidden="true"></span>
-            <span class="film-big-play-text">Play the film</span>
-            <span class="film-big-play-meta">0:30 &middot; sound on</span>
-          </button>
-          <p class="film-status" role="status" hidden></p>
-        </div>
-        <div class="film-bar">
-          <button class="film-btn film-toggle" type="button" aria-label="Play" data-state="play">
-            <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12-7.5z"/></svg>
-            <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5h4v15H6zM14 4.5h4v15h-4z"/></svg>
-            <svg class="i-replay" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5V1.5L7 6l5 4.5V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg>
-          </button>
-          <input class="film-seek" type="range" min="0" max="29.5" step="0.01" value="0" aria-label="Seek through the film">
-          <span class="film-time">0:00 / 0:30</span>
-          <button class="film-btn film-cc" type="button" aria-pressed="true" aria-label="Captions">CC</button>
-          <button class="film-btn film-mute" type="button" aria-pressed="false" aria-label="Mute">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path class="i-speaker" d="M4 9h4l5-4v14l-5-4H4z"/><path class="i-waves" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="i-slash" d="M16 9l6 6M22 9l-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-          </button>
-        </div>
-        <figcaption>
-          <details class="film-transcript">
-            <summary>Read the transcript</summary>
-            <ol>
-              <li><span class="who">Narrator</span> You've read this email a thousand times.</li>
-              <li><span class="who">Chatbot</span> <q>I hope this message finds you well!</q></li>
-              <li><span class="who">Chatbot</span> <q>Your kindness is a vibrant testament.</q></li>
-              <li><span class="who">Narrator</span> Words that could belong to anyone.</li>
-              <li><span class="who">Narrator</span> Wordsmith Workshop puts your point first, and backs it with real details.</li>
-              <li><span class="who">Narrator</span> It shapes each piece with methods real editors use,</li>
-              <li><span class="who">Narrator</span> then checks every line for the tells that give a chatbot away.</li>
-              <li><span class="who">Narrator</span> Now it sounds like you.</li>
-              <li><span class="who">Narrator</span> Wordsmith Workshop. Lead with the point.</li>
-            </ol>
-            <p class="film-credit">Voices made with Kokoro, an open-source speech model. Music and sound effects are synthesized in the browser.</p>
-          </details>
-        </figcaption>
-      </figure>
-    </div>
-  </section>
-
-  <section class="band" id="how" aria-labelledby="how-title">
-    <div class="wrap split">
       <header class="section-head">
         <p class="eyebrow">How it works</p>
-        <h2 id="how-title">Five layers, always in this order</h2>
-        <p>A buried point can't be fixed with line edits, so structure comes first. Tells come last. Most of them disappear once the structure is right and the details are specific, and the audit catches the rest.</p>
+        <h2 id="how-title">Three steps, <em>every time</em></h2>
       </header>
-      <ol class="layers">
-        <li>
-          <span class="layer-n" aria-hidden="true">1</span>
-          <div>
-            <h3>Structure <span class="tag">Always on</span></h3>
-            <p>Barbara Minto's Pyramid Principle. The skill settles the governing thought and the points under it before writing any prose.</p>
-          </div>
+      <ol class="steps">
+        <li class="step step-1">
+          <svg class="step-doodle" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><path d="M10 14h44a4 4 0 0 1 4 4v22a4 4 0 0 1-4 4H30l-12 10v-10h-8a4 4 0 0 1-4-4V18a4 4 0 0 1 4-4z" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round"/><path d="M18 25h28M18 33h18" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg>
+          <p class="step-n">1</p>
+          <h3>Ask for a draft, or paste one in</h3>
+          <p>Write, reply, rewrite or check. Say who's reading and what you need from them. If a key fact is missing, it asks one question.</p>
         </li>
-        <li>
-          <span class="layer-n" aria-hidden="true">2</span>
-          <div>
-            <h3>Methods <span class="tag">You pick</span></h3>
-            <p>Up to five extra methods per piece. Each one controls a different part of the writing, so they stack without making it longer.</p>
-          </div>
+        <li class="step step-2">
+          <svg class="step-doodle" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><path d="M32 8l24 44H8z" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round"/><path d="M22 34h20M17 44h30" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg>
+          <p class="step-n">2</p>
+          <h3>It builds the piece around your point</h3>
+          <p>The point goes first, then the details that back it up. You choose the methods below. It picks the format: an email, a text, a complaint, a toast or a card.</p>
         </li>
-        <li>
-          <span class="layer-n" aria-hidden="true">3</span>
-          <div>
-            <h3>Format <span class="tag">Inferred</span></h3>
-            <p>Standard, Brief, Persuade, Story or Letter, chosen from the request and named at the end so you can switch.</p>
-          </div>
-        </li>
-        <li>
-          <span class="layer-n" aria-hidden="true">4</span>
-          <div>
-            <h3>Craft and voice <span class="tag">Your voice</span></h3>
-            <p>Ten habits of a strong copywriter, applied in your own voice. Your greetings and sign-offs stay, even when a generic rule would cut them.</p>
-          </div>
-        </li>
-        <li>
-          <span class="layer-n" aria-hidden="true">5</span>
-          <div>
-            <h3>Audit <span class="tag">Scan + judgment</span></h3>
-            <p>A pattern scan for AI tells, then a sentence-by-sentence read. The skill fixes every strong and moderate hit before you see the draft.</p>
-          </div>
+        <li class="step step-3">
+          <svg class="step-doodle" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><circle cx="27" cy="27" r="16" fill="none" stroke="currentColor" stroke-width="3.5"/><path d="M39 39l15 15" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><path d="M20 27l5 5 9-10" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <p class="step-n">3</p>
+          <h3>It checks every line</h3>
+          <p>A scan for 36 patterns that read as machine-made or padded, then a read for sentences that could be anyone's. It fixes what it finds before you see the draft.</p>
         </li>
       </ol>
     </div>
-
-    <div class="wrap modes">
-      <div class="mode">
-        <h3>Draft</h3>
-        <p>Ask it to write something or reply to something. It asks which methods to use, builds the piece, audits its own draft and hands it back ready to copy, with a two-line note naming the methods and format it used.</p>
-      </div>
-      <div class="mode">
-        <h3>Audit</h3>
-        <p>Paste a draft and ask whether it sounds like AI. You get a verdict, the structural problems, each tell with its fix, and a rewrite in your voice if the text is yours.</p>
-      </div>
-      <div class="mode mode-prompts">
-        <h3>Things to ask it</h3>
-        <ul class="prompts">
-          <li>Draft a note asking our contractor to push the deck start to 11/21.</li>
-          <li>Write a two-minute toast for my sister's wedding.</li>
-          <li>Does this complaint to the airline sound like AI?</li>
-          <li>What methods do you have?</li>
-        </ul>
-      </div>
-    </div>
   </section>
 
-  <section class="band band-tool" id="scanner" aria-labelledby="scanner-title">
+  <section class="band band-methods" id="methods" aria-labelledby="methods-title">
+    <svg class="tear tear-top" viewBox="0 0 1440 40" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M0,40 L0,14 L17,20 L32,18 L54,9 L78,9 L101,9 L116,16 L147,10 L165,19 L198,18 L220,26 L235,23 L255,11 L271,14 L302,11 L327,20 L349,18 L364,9 L382,20 L405,14 L430,16 L450,22 L478,12 L504,17 L535,21 L555,26 L572,16 L601,11 L624,9 L652,22 L677,24 L698,21 L723,18 L747,23 L779,17 L807,9 L835,20 L869,23 L888,15 L916,8 L939,11 L955,9 L985,10 L1004,15 L1035,9 L1058,18 L1090,23 L1121,13 L1143,14 L1175,25 L1192,11 L1211,12 L1234,19 L1254,8 L1276,15 L1301,25 L1329,17 L1355,20 L1370,24 L1400,24 L1430,15 L1440,18 L1440,40 Z"/></svg>
+    <div class="wrap">
+      <header class="section-head">
+        <p class="eyebrow">The methods</p>
+        <h2 id="methods-title">Six methods, and why <em>each rewrite works</em></h2>
+        <p>Minto's pyramid is always on. The rest come in when a piece needs them, and each one changes one thing. Pick a method to see that change, before and after.</p>
+      </header>
+      <div class="methods">
+        <div class="method-tabs" role="tablist" aria-label="Methods">
+          <button class="method-tab" type="button" role="tab" id="tab-pyramid" aria-controls="panel-pyramid" aria-selected="true"><span class="method-tab-n" aria-hidden="true">1</span>Pyramid Principle</button>
+          <button class="method-tab" type="button" role="tab" id="tab-scqa" aria-controls="panel-scqa" aria-selected="false" tabindex="-1"><span class="method-tab-n" aria-hidden="true">2</span>SCQA</button>
+          <button class="method-tab" type="button" role="tab" id="tab-mece" aria-controls="panel-mece" aria-selected="false" tabindex="-1"><span class="method-tab-n" aria-hidden="true">3</span>MECE</button>
+          <button class="method-tab" type="button" role="tab" id="tab-inverted" aria-controls="panel-inverted" aria-selected="false" tabindex="-1"><span class="method-tab-n" aria-hidden="true">4</span>Inverted Pyramid</button>
+          <button class="method-tab" type="button" role="tab" id="tab-wwb" aria-controls="panel-wwb" aria-selected="false" tabindex="-1"><span class="method-tab-n" aria-hidden="true">5</span>Writing Without Bullshit</button>
+          <button class="method-tab" type="button" role="tab" id="tab-data" aria-controls="panel-data" aria-selected="false" tabindex="-1"><span class="method-tab-n" aria-hidden="true">6</span>Storytelling with Data</button>
+        </div>
+        <article class="method-panel" role="tabpanel" id="panel-pyramid" aria-labelledby="tab-pyramid" tabindex="0">
+          <header class="method-head">
+            <h3>Pyramid Principle</h3>
+            <p class="method-meta"><span class="method-by">Barbara Minto</span> <span class="sticker">Always on</span></p>
+            <p class="method-use">Use it for: Everything. It's the base every other method sits on.</p>
+          </header>
+          <div class="method-compare">
+            <figure class="sample sample-before">
+              <figcaption><span class="tag tag-before">Before</span></figcaption>
+              <p class="example-before">Hi Mark, <mark class="tell">I hope you're doing well.</mark> <mark class="tell">Things have been a bit hectic on our end lately.</mark> Last week we talked about starting the deck on the 14th, and that could still work, but my in-laws are visiting that week and the yard will be pretty busy. <mark class="tell">Would it be possible to push it back?</mark></p>
+            </figure>
+            <figure class="sample sample-after">
+              <figcaption><span class="tag tag-after">After</span></figcaption>
+              <p class="example-after">Hi Mark, <mark class="fix">Could we move the deck start from 11/14 to 11/21?</mark> My in-laws are staying with us that week and the yard will be full. <mark class="fix">Anything from 11/21 through 11/30 works for us.</mark> Thanks!</p>
+            </figure>
+          </div>
+          <div class="method-why">
+            <h4>Why it was rewritten this way</h4>
+            <ol>
+              <li>The ask moved from the last sentence to the first. Mark decides how closely to read in the first few seconds, so the thing he has to act on goes there.</li>
+              <li>“Hectic” went. It described the writer's week, and Mark didn't need it to decide anything.</li>
+              <li>A date range came in. It makes yes easy, and that's the job of everything under the point.</li>
+            </ol>
+          </div>
+        </article>
+        <article class="method-panel" role="tabpanel" id="panel-scqa" aria-labelledby="tab-scqa" tabindex="0">
+          <header class="method-head">
+            <h3>SCQA</h3>
+            <p class="method-meta"><span class="method-by">Barbara Minto</span> <span class="sticker">The opening</span></p>
+            <p class="method-use">Use it for: Explaining a decision or a change to people who need the context first.</p>
+          </header>
+          <div class="method-compare">
+            <figure class="sample sample-before">
+              <figcaption><span class="tag tag-before">Before</span></figcaption>
+              <p class="example-before">Hey all, so <mark class="tell">we've been going back and forth a lot about the holidays and there are a lot of moving pieces</mark>, but after talking it through we've decided we'll do Thanksgiving at our place this year.</p>
+            </figure>
+            <figure class="sample sample-after">
+              <figcaption><span class="tag tag-after">After</span></figcaption>
+              <p class="example-after"><mark class="fix">Thanksgiving is usually at Mom's,</mark> <mark class="fix">but her kitchen won't be finished until January.</mark> <mark class="fix">So this year it's at our place, same time: 2pm on the 26th.</mark></p>
+            </figure>
+          </div>
+          <div class="method-why">
+            <h4>Why it was rewritten this way</h4>
+            <ol>
+              <li>Situation first: the thing everyone already knows, that it's usually at Mom's.</li>
+              <li>Then the complication that changes it. The kitchen answers the question everyone would ask, before they ask it.</li>
+              <li>Then the answer, with a time and a date. “A lot of moving pieces” went, because it told nobody anything.</li>
+            </ol>
+          </div>
+        </article>
+        <article class="method-panel" role="tabpanel" id="panel-mece" aria-labelledby="tab-mece" tabindex="0">
+          <header class="method-head">
+            <h3>MECE</h3>
+            <p class="method-meta"><span class="method-by">Barbara Minto</span> <span class="sticker">The grouping</span></p>
+            <p class="method-use">Use it for: Plans, options and lists of asks: anything with parts.</p>
+          </header>
+          <div class="method-compare">
+            <figure class="sample sample-before">
+              <figcaption><span class="tag tag-before">Before</span></figcaption>
+              <p class="example-before">For the trip we still need to <mark class="tell">book the cabin</mark>, and someone should check the car, and we need groceries, and <mark class="tell">has anyone booked the cabin yet?</mark> Also snacks for the drive, and the car needs new wipers.</p>
+            </figure>
+            <figure class="sample sample-after">
+              <figcaption><span class="tag tag-after">After</span></figcaption>
+              <p class="example-after"><mark class="fix">Three jobs before Friday.</mark> Ana: book the cabin. Me: the car, an oil check and new wipers. Raj: food, groceries and snacks for the drive.</p>
+            </figure>
+          </div>
+          <div class="method-why">
+            <h4>Why it was rewritten this way</h4>
+            <ol>
+              <li>Every item now sits in exactly one group, and the groups cover everything. That's what MECE means: mutually exclusive, collectively exhaustive.</li>
+              <li>The groups follow one rule, who's doing it, so each person finds their job in one place.</li>
+              <li>The cabin came up twice and now appears once. The scanner can't see a muddle like this one. The method can.</li>
+            </ol>
+          </div>
+        </article>
+        <article class="method-panel" role="tabpanel" id="panel-inverted" aria-labelledby="tab-inverted" tabindex="0">
+          <header class="method-head">
+            <h3>Inverted Pyramid</h3>
+            <p class="method-meta"><span class="method-by">Newsroom practice</span> <span class="sticker">The order</span></p>
+            <p class="method-use">Use it for: News, announcements, changes of plan and recaps.</p>
+          </header>
+          <div class="method-compare">
+            <figure class="sample sample-before">
+              <figcaption><span class="tag tag-before">Before</span></figcaption>
+              <p class="example-before"><mark class="tell">So last weekend was a lot. After looking at a bunch of places and a few long nights talking it over, we finally signed a lease,</mark> so we're moving to Milwaukee in March!</p>
+            </figure>
+            <figure class="sample sample-after">
+              <figcaption><span class="tag tag-after">After</span></figcaption>
+              <p class="example-after"><mark class="fix">We're moving to Milwaukee on March 15.</mark> We signed the lease Saturday: a two-bedroom ten minutes from Tara's new job. Visitors welcome from April.</p>
+            </figure>
+          </div>
+          <div class="method-why">
+            <h4>Why it was rewritten this way</h4>
+            <ol>
+              <li>The news is now the first sentence: what, where and when. Anyone who stops reading there still has it.</li>
+              <li>The rest follows in order of importance, so the most useful detail, where they'll be, comes next.</li>
+              <li>The backstory went. It mattered more to the people moving than to the people reading.</li>
+            </ol>
+          </div>
+        </article>
+        <article class="method-panel" role="tabpanel" id="panel-wwb" aria-labelledby="tab-wwb" tabindex="0">
+          <header class="method-head">
+            <h3>Writing Without Bullshit</h3>
+            <p class="method-meta"><span class="method-by">Josh Bernoff</span> <span class="sticker">The edit</span></p>
+            <p class="method-use">Use it for: Busy readers: a company, an office, a contractor. Bad news, too.</p>
+          </header>
+          <div class="method-compare">
+            <figure class="sample sample-before">
+              <figcaption><span class="tag tag-before">Before</span></figcaption>
+              <p class="example-before"><mark class="tell">I just wanted to reach out</mark> to let you know that, unfortunately, it <mark class="tell">appears</mark> the invoice <mark class="tell">may have been charged</mark> twice, and I would <mark class="tell">really</mark> appreciate it if this could <mark class="tell">possibly be looked into</mark> <mark class="tell">at your earliest convenience.</mark></p>
+            </figure>
+            <figure class="sample sample-after">
+              <figcaption><span class="tag tag-after">After</span></figcaption>
+              <p class="example-after"><mark class="fix">You charged my card twice</mark> for invoice #4471 ($185 on 9/12). <mark class="fix">Please refund the duplicate by Friday, 9/18.</mark></p>
+            </figure>
+          </div>
+          <div class="method-why">
+            <h4>Why it was rewritten this way</h4>
+            <ol>
+              <li>The ask and the facts moved into the first two sentences, where a busy reader decides what to do with a message.</li>
+              <li>Passive voice became who did what: “may have been charged” is now “you charged.”</li>
+              <li>Hedges and stock phrases came out: “appears,” “possibly,” “at your earliest convenience.” 38 words became 18, and the deadline makes it easy to act on.</li>
+            </ol>
+          </div>
+        </article>
+        <article class="method-panel" role="tabpanel" id="panel-data" aria-labelledby="tab-data" tabindex="0">
+          <header class="method-head">
+            <h3>Storytelling with Data</h3>
+            <p class="method-meta"><span class="method-by">Cole Nussbaumer Knaflic</span> <span class="sticker">The numbers</span></p>
+            <p class="method-use">Use it for: Anything with figures: budgets, bills, comparisons.</p>
+          </header>
+          <div class="method-compare">
+            <figure class="sample sample-before">
+              <figcaption><span class="tag tag-before">Before</span></figcaption>
+              <p class="example-before">The new phone plan is <mark class="tell">a lot cheaper</mark> and would save us <mark class="tell">a significant amount</mark> over the year compared to what we're paying now.</p>
+            </figure>
+            <figure class="sample sample-after">
+              <figcaption><span class="tag tag-after">After</span></figcaption>
+              <p class="example-after"><mark class="fix">The new plan saves us $34 a month:</mark> $61 instead of $95. <mark class="fix">That's $408 a year,</mark> about one flight home.</p>
+            </figure>
+          </div>
+          <div class="method-why">
+            <h4>Why it was rewritten this way</h4>
+            <ol>
+              <li>One big idea up front: it saves money, and here's how much.</li>
+              <li>Only the numbers that matter, each next to a comparison: the new price beside the old one, the yearly total beside something real.</li>
+              <li>“A lot cheaper” and “significant” asked the reader to take it on trust. The numbers don't.</li>
+            </ol>
+          </div>
+        </article>
+      </div>
+    </div>
+    <svg class="tear tear-bottom" viewBox="0 0 1440 40" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M0,40 L0,14 L17,20 L32,18 L54,9 L78,9 L101,9 L116,16 L147,10 L165,19 L198,18 L220,26 L235,23 L255,11 L271,14 L302,11 L327,20 L349,18 L364,9 L382,20 L405,14 L430,16 L450,22 L478,12 L504,17 L535,21 L555,26 L572,16 L601,11 L624,9 L652,22 L677,24 L698,21 L723,18 L747,23 L779,17 L807,9 L835,20 L869,23 L888,15 L916,8 L939,11 L955,9 L985,10 L1004,15 L1035,9 L1058,18 L1090,23 L1121,13 L1143,14 L1175,25 L1192,11 L1211,12 L1234,19 L1254,8 L1276,15 L1301,25 L1329,17 L1355,20 L1370,24 L1400,24 L1430,15 L1440,18 L1440,40 Z"/></svg>
+  </section>
+
+  <section class="band band-scan" id="scanner" aria-labelledby="scanner-title">
     <div class="wrap">
       <header class="section-head section-head-wide">
-        <p class="eyebrow">Layer 5, on its own</p>
-        <h2 id="scanner-title">Scan a draft for AI tells</h2>
-        <p>This is the skill's pattern scanner, rebuilt to run in your browser. Paste a draft and it marks the phrases that make writing sound machine-made, with a fix for each one. Nothing you type leaves this page.</p>
+        <p class="eyebrow">Try it</p>
+        <h2 id="scanner-title">Scan your own draft</h2>
+        <p>This is the skill's own scanner, running in your browser. Paste anything you've written and it marks the phrases that make writing sound machine-made, with a fix for each. Nothing you type leaves this page.</p>
       </header>
 
       <div class="scan-controls">
@@ -247,170 +354,18 @@
     </div>
   </section>
 
-  <section class="band" id="methods" aria-labelledby="methods-title">
-    <div class="wrap">
-      <header class="section-head section-head-wide">
-        <p class="eyebrow">Methods</p>
-        <h2 id="methods-title">Five methods that sit on the pyramid</h2>
-        <p>You pick the methods for each piece. Each one owns a single job (the opening, the grouping, the order, the edit or the numbers), which is why they stack. A piece built with four methods should be no longer than one built with Minto alone.</p>
-      </header>
-
-      <div class="method method-base">
-        <div class="method-name">
-          <h3>Pyramid Principle</h3>
-          <p class="source">Barbara Minto</p>
-          <span class="tag">Always on</span>
-        </div>
-        <div>
-          <p class="mini-label">What it does</p>
-          <p>One governing thought, written before anything else. Under it, two to four points of the same kind with no overlaps, then the specifics.</p>
-        </div>
-        <div>
-          <p class="mini-label">The test</p>
-          <p>If the reader stopped after the first sentence, would they know what you want or what you think?</p>
-        </div>
-      </div>
-
-      <div class="method">
-        <div class="method-name">
-          <h3>SCQA</h3>
-          <p class="source">Barbara Minto</p>
-          <span class="tag">Controls the opening</span>
-        </div>
-        <div>
-          <p class="mini-label">Pick it for</p>
-          <p>Explaining a decision or a change, or a request that needs context before it makes sense.</p>
-        </div>
-        <div>
-          <p class="mini-label">What changes</p>
-          <p>The opening runs situation, complication, then your answer, in an order chosen for this reader.</p>
-        </div>
-      </div>
-
-      <div class="method">
-        <div class="method-name">
-          <h3>MECE</h3>
-          <p class="source">Barbara Minto</p>
-          <span class="tag">Controls the grouping</span>
-        </div>
-        <div>
-          <p class="mini-label">Pick it for</p>
-          <p>Options, plans, comparisons, a list of asks: anything with categories.</p>
-        </div>
-        <div>
-          <p class="mini-label">What changes</p>
-          <p>Items sorted into clean groups on one dimension, with no overlaps and no gaps.</p>
-        </div>
-      </div>
-
-      <div class="method">
-        <div class="method-name">
-          <h3>Inverted Pyramid</h3>
-          <p class="source">Newsroom practice</p>
-          <span class="tag">Controls the order</span>
-        </div>
-        <div>
-          <p class="mini-label">Pick it for</p>
-          <p>News, announcements, schedule changes and recaps of what happened.</p>
-        </div>
-        <div>
-          <p class="mini-label">What changes</p>
-          <p>A lede that answers who, what, when, where, why and how. Details follow in falling order of importance, so the reader can stop anywhere.</p>
-        </div>
-      </div>
-
-      <div class="method">
-        <div class="method-name">
-          <h3>Writing Without Bullshit</h3>
-          <p class="source">Josh Bernoff</p>
-          <span class="tag">Controls the edit</span>
-        </div>
-        <div>
-          <p class="mini-label">Pick it for</p>
-          <p>Busy readers: a company, an office, a contractor. Also bad news, and replies in a thread that's gone long.</p>
-        </div>
-        <div>
-          <p class="mini-label">What changes</p>
-          <p>The first two sentences carry the message. Passive voice, jargon, weasel words and intensifiers come out, and the result is shorter.</p>
-        </div>
-      </div>
-
-      <div class="method">
-        <div class="method-name">
-          <h3>Storytelling with Data</h3>
-          <p class="source">Cole Nussbaumer Knaflic</p>
-          <span class="tag">Controls the numbers</span>
-        </div>
-        <div>
-          <p class="mini-label">Pick it for</p>
-          <p>Anything with figures: budgets, cost comparisons, a dispute over an amount.</p>
-        </div>
-        <div>
-          <p class="mini-label">What changes</p>
-          <p>A one-sentence Big Idea. Only the numbers that matter, each with a comparison, and a small table only when the reader needs to look things up.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="band band-alt" id="formats" aria-labelledby="formats-title">
-    <div class="wrap">
-      <header class="section-head section-head-wide">
-        <p class="eyebrow">Formats</p>
-        <h2 id="formats-title">Where the point lands</h2>
-        <p>The format comes from the request, so you don't have to pick one. When two fit, it picks the one whose reader has less time. Anything meant to be kept is a Letter, and anything spoken aloud is a Story.</p>
-      </header>
-      <div class="table-scroll">
-        <table class="formats">
-          <thead>
-            <tr><th scope="col">Format</th><th scope="col">Use it for</th><th scope="col">Where the point lands</th></tr>
-          </thead>
-          <tbody>
-            <tr><th scope="row">Standard</th><td>Asks, updates, logistics, scheduling, most email</td><td>First sentence</td></tr>
-            <tr><th scope="row">Brief</th><td>Texts and quick replies under about 60 words</td><td>First sentence, and often the only one</td></tr>
-            <tr><th scope="row">Persuade</th><td>Complaints, refund requests, appeals, changing someone's mind</td><td>First lines as the ask, then again at the end as the action</td></tr>
-            <tr><th scope="row">Story</th><td>Toasts, tributes, personal posts, family updates with a turn in them</td><td>By the end of the opening paragraph</td></tr>
-            <tr><th scope="row">Letter</th><td>Cards, sympathy notes, anniversaries, a letter to a child</td><td>First true sentence after the greeting</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <p class="example-line"><span class="mini-label">A Brief, start to finish</span> Running 10 min late, still good for 6:30? Saving you a seat if you beat me there.</p>
-    </div>
-  </section>
-
-  <section class="band" id="craft" aria-labelledby="craft-title">
-    <div class="wrap">
-      <header class="section-head section-head-wide">
-        <p class="eyebrow">The craft standard</p>
-        <h2 id="craft-title">Ten habits of an award-winning writer</h2>
-        <p>Told to write like an award winner, a model reaches for adjectives and big claims, which is the first family of AI tells. So the skill defines the standard by what strong writers do.</p>
-      </header>
-      <ol class="habits">
-        <li><h3>Find the detail only this piece has.</h3><p>Names, numbers, dates, what someone said. Without one, a piece can be correct and still forgettable.</p></li>
-        <li><h3>Let verbs do the work.</h3><p>"Fixed" beats "was able to resolve." Cut the adverbs propping up weak verbs.</p></li>
-        <li><h3>Make the first line earn the second.</h3><p>"Moving the deck start to 11/21?" beats "Following up."</p></li>
-        <li><h3>One idea per piece.</h3><p>If there are two, one leads and the other waits for a second message.</p></li>
-        <li><h3>Vary the rhythm on purpose.</h3><p>A short sentence after a long one. A colon, a question, a parenthesis when it fits.</p></li>
-        <li><h3>Earn the emotion.</h3><p>"She kept the voicemail for six years" says more than "it meant so much to her."</p></li>
-        <li><h3>Commit.</h3><p>Say "was the first" or "I think" when it's true. Hedging everything reads as nobody being home.</p></li>
-        <li><h3>Run the cover test.</h3><p>Hide the names. If it could be anyone's message to anyone, put the specifics back.</p></li>
-        <li><h3>Cut a fifth.</h3><p>The second pass removes about 20 percent: warm-up sentences, double adjectives, restatements.</p></li>
-        <li><h3>End strong.</h3><p>Close on the action, the date or the final image. Never on a recap or an offer of more help.</p></li>
-      </ol>
-    </div>
-  </section>
-
 </main>
 
 <footer class="site-foot">
   <div class="wrap foot-row">
-    <p class="brand">Wordsmith Workshop</p>
+    <p class="brand"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M5 27l3.2-9.4L22 3.8a2.7 2.7 0 0 1 3.8 0l2.4 2.4a2.7 2.7 0 0 1 0 3.8L14.4 23.8z" fill="#2F5BEA"/><path d="M5 27l3.2-9.4 6.2 6.2z" fill="#F2D2A9"/><path d="M5 27l1.4-4.1 2.7 2.7z" fill="#151B2D"/><path d="M22 3.8a2.7 2.7 0 0 1 3.8 0l2.4 2.4a2.7 2.7 0 0 1 0 3.8l-1.6 1.6-6.2-6.2z" fill="#EE8F9C"/></svg><span>Wordsmith Workshop</span></p>
     <p>A skill for Claude. Methods from Barbara Minto, Josh Bernoff and Cole Nussbaumer Knaflic. The tell catalog is adapted from <a href="https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing">Wikipedia: Signs of AI writing</a> (WikiProject AI Cleanup, CC BY-SA 4.0). The scanner reports patterns. It can't tell you who or what wrote a piece.</p>
   </div>
 </footer>
 
 <script src="assets/scanner.js"></script>
 <script src="assets/app.js"></script>
+<script src="assets/methods.js"></script>
 <script src="assets/film/film-kit.js" defer></script>
 <script src="assets/film/film-scenes.js" defer></script>
 <script src="assets/film/film-audio.js" defer></script>

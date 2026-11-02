@@ -2,7 +2,7 @@
 
 A one-page site for the Wordsmith Workshop Claude skill: a writing studio that drafts and audits personal writing, built on Minto's Pyramid Principle and checked for AI-writing tells.
 
-The page explains the skill's five layers, its methods and formats, and the craft standard. It also includes a working copy of the skill's tell scanner, so anyone can paste a draft and see what it flags.
+The page opens on a 30-second film, explains how the skill works in three steps, and shows each method with a before, an after and the reasons for every change. It also includes a working copy of the skill's tell scanner, so anyone can paste a draft and see what it flags.
 
 ## What's here
 
@@ -12,6 +12,7 @@ The page explains the skill's five layers, its methods and formats, and the craf
 | `assets/style.css` | Styles, with light and dark themes |
 | `assets/scanner.js` | The tell scanner, ported from the skill's `scripts/tell_scan.py` |
 | `assets/app.js` | Connects the scanner to the page: highlights, report, samples |
+| `assets/methods.js` | The method tabs (every method shows if JavaScript is off) |
 | `assets/film/` | The 30-second explainer film: drawing kit, scenes, synthesized score and sound, player, and the voiceover clips |
 | `tools/film/` | Re-recording the voiceover and exporting the film as an MP4 |
 | `vercel.json` | Tells Vercel to serve the files as they are, with no build step |
