@@ -368,7 +368,7 @@ a:hover { text-decoration-thickness: 2px; }
 }
 .manuscript textarea::placeholder { color: var(--ink-soft); }
 
-.hl { color: transparent; transition: background-color 0.2s; }
+.hl { color: transparent; background: transparent; transition: background-color 0.2s; } /* no browser-default yellow */
 .hl-strong { background: var(--strong-tint); box-shadow: inset 0 -2px 0 var(--strong); }
 .hl-moderate { background: var(--moderate-tint); box-shadow: inset 0 -2px 0 var(--moderate); }
 .hl-weak { box-shadow: inset 0 -2px 0 var(--weak); }

@@ -82,6 +82,18 @@ test("every finding in the report can be found in the text", async () => {
   await context.close();
 });
 
+test("weak highlights use the theme, not the browser's yellow", async () => {
+  // Regression: marks with no background of their own fell back to the
+  // browser default (yellow), which made text unreadable in dark mode.
+  for (const scheme of ["light", "dark"]) {
+    const { page, context } = await open({ scheme });
+    const weak = await page.$$eval("#scan-backdrop mark.hl-weak", (marks) => marks.map((m) => getComputedStyle(m).backgroundColor));
+    assert.ok(weak.length > 0, "the sample should have a weak hit");
+    assert.deepEqual([...new Set(weak)], ["rgba(0, 0, 0, 0)"], scheme);
+    await context.close();
+  }
+});
+
 test("clicking a finding flashes its place in the text", async () => {
   const { page, context } = await open();
   const btn = page.locator("button.finding", { hasText: "Significance / legacy puffing" }).first();
