@@ -128,6 +128,13 @@ The browser tests block requests to other hosts, so they don't need the network 
 2. Run `npm run test:unit`, and update `assets/scanner.js` until it passes.
 3. If the change adds a new check or threshold, add a fixture or a boundary case in `tests/fixtures/boundaries.json` that triggers it. A unit test reads the list of checks from the scanner and fails if any of them has no fixture.
 
+## Changing the film
+
+The film in `assets/film/` is plain JavaScript drawing on a canvas. `film-scenes.js` holds the timeline (`CUES` for the voice, `T` for the moments the picture and sound hang on), and `renderFrame(ctx, t)` draws any moment from its timestamp alone. The score and sound effects in `film-audio.js` are synthesized from the same timeline, so moving a moment in `T` moves its sound with it.
+
+- To change a spoken line, edit it in `tools/film/make_voiceover.py` and in `CUES`, re-record with `python3 tools/film/make_voiceover.py --models <folder>` (setup is in the script's docstring), then copy the new lengths from `assets/film/vo/durations.json` into `CUES`. The unit tests fail until they match, and they also check that the narration passes the scanner.
+- To export the film for sharing: `node tools/film/export_video.js out/wordsmith-workshop-film.mp4`.
+
 ## QA checklist
 
 The template asks for this on every pull request:
