@@ -13,22 +13,46 @@ The page explains the skill's five layers, its methods and formats, and the craf
 | `assets/scanner.js` | The tell scanner, ported from the skill's `scripts/tell_scan.py` |
 | `assets/app.js` | Connects the scanner to the page: highlights, report, samples |
 | `vercel.json` | Tells Vercel to serve the files as they are, with no build step |
+| `tests/` | Unit tests for the scanner and browser tests for the page |
+| `.github/` | CI, PR convention checks, PR and issue templates, Dependabot |
 
-The site has no build step, no runtime dependencies and no backend. The scanner runs in the browser, so pasted text never leaves the page. Fonts load from Google Fonts.
+The site itself has no build step, no runtime dependencies and no backend. The scanner runs in the browser, so pasted text never leaves the page. Fonts load from Google Fonts.
 
 ## Run it locally
 
-Open `index.html` in a browser, or serve the folder with any static file server:
+Open `index.html` in a browser, or serve the folder:
 
 ```bash
-python3 -m http.server 8000
+npm start
 ```
 
 Then visit http://localhost:8000.
 
+## Tests
+
+```bash
+npm ci
+```
+
+```bash
+npx playwright install chromium
+```
+
+```bash
+npm test
+```
+
+The unit tests check the scanner against results saved from the skill's Python script, including cases just either side of every threshold. The browser tests load the page in Chromium and use it the way a visitor would. CI runs both on every pull request.
+
+## Contributing
+
+Every change starts as an issue and lands through a pull request into `main`, one change per pull request. Branches are named `type/<issue>-short-description`, pull request titles follow Conventional Commits, and each pull request closes its issue. CI checks all three. [CONTRIBUTING.md](CONTRIBUTING.md) has the full workflow, the naming rules, the QA checklist and how to keep the scanner in step with the skill.
+
 ## Deploy
 
 Vercel deploys every branch as a preview and `main` as the live site. `vercel.json` tells it the site is static files with no build step.
+
+To use GitHub Pages instead, go to Settings, then Pages. Under "Build and deployment," choose "Deploy from a branch," pick `main` and the `/ (root)` folder, and save.
 
 ## Credits
 

@@ -1,0 +1,32 @@
+name: Bug
+description: Something on the site doesn't work the way it should.
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you saw, and what you expected instead.
+      placeholder: I clicked a finding in the report and the page didn't scroll to it.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Load the "before" sample.
+        2. Click the first finding.
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: Browser and device
+      placeholder: Safari on iPhone 15, dark mode
+  - type: textarea
+    id: text
+    attributes:
+      label: Text that triggers it
+      description: If it's about the scanner, paste the text you scanned. It's shown as code.
+      render: text

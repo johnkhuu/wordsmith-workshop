@@ -1,0 +1,22 @@
+name: Feature
+description: Something new a visitor can see or use, or a change to how the site works.
+labels: [feature]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What
+      description: What should change, and why. Lead with the outcome.
+      placeholder: Visitors can switch the scanner to audit a subject line on its own.
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      description: The checks a reviewer will use to call this finished, one per line.
+      placeholder: |
+        - The scanner flags stock openers in subject lines.
+        - A unit test covers the new check.
+    validations:
+      required: true
