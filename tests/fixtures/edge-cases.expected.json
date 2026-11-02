@@ -1,0 +1,310 @@
+{
+  "words": 128,
+  "counts": {
+    "strong": 17,
+    "moderate": 5,
+    "weak": 4
+  },
+  "strong_plus_moderate_per_100_words": 17.19,
+  "rhythm": {
+    "sentences": 14,
+    "mean": 8.7,
+    "spread": 5.0,
+    "shortest": 2,
+    "longest": 19,
+    "in_8_20_band_pct": 57
+  },
+  "punctuation": {
+    "comma": 10,
+    "period": 11,
+    "semicolon": 0,
+    "colon": 2,
+    "parens": 1,
+    "question": 0,
+    "exclamation": 4,
+    "em_dash": 1
+  },
+  "em_dash_per_100_words": 0.78,
+  "vocabulary": {
+    "distinctive": {
+      "delve": 1,
+      "intricate": 1,
+      "interplay": 1,
+      "leverage": 1
+    },
+    "common": {
+      "challenge": 1
+    },
+    "other": {
+      "journey": 1,
+      "holistic": 1,
+      "robust": 1,
+      "transformative": 1,
+      "circle back": 1,
+      "synergy": 1
+    }
+  },
+  "writing_without_bullshit": null,
+  "findings": [
+    {
+      "code": "C7",
+      "family": "Rhythm",
+      "severity": "strong",
+      "label": "AI vocabulary cluster",
+      "line": 0,
+      "match": "delve, intricate, interplay, leverage, journey, holistic, robust, transformative, circle back, synergy, challenge",
+      "context": "",
+      "fix": "Replace each with the plain or specific word. See ai-tells.md section 7."
+    },
+    {
+      "code": "D2",
+      "family": "Packaging",
+      "severity": "strong",
+      "label": "Bold-label bullet",
+      "line": 2,
+      "match": "- **Budget:**",
+      "context": "# What This Means For Our Family - **Budget:** we will utilize the savings prior...",
+      "fix": "Use prose, or plain full-sentence list items."
+    },
+    {
+      "code": "B5",
+      "family": "Vagueness",
+      "severity": "strong",
+      "label": "Placeholder left in",
+      "line": 4,
+      "match": "TBD",
+      "context": "...s prior to the move. - **Timing:** TBD 🎉 Big news! We're relocating to De...",
+      "fix": "Fill it or delete it, and tell the user what's missing."
+    },
+    {
+      "code": "D2",
+      "family": "Packaging",
+      "severity": "strong",
+      "label": "Bold-label bullet",
+      "line": 4,
+      "match": "- **Timing:**",
+      "context": "...ize the savings prior to the move. - **Timing:** TBD 🎉 Big news! We're relocating t...",
+      "fix": "Use prose, or plain full-sentence list items."
+    },
+    {
+      "code": "A1",
+      "family": "Inflation",
+      "severity": "strong",
+      "label": "Significance / legacy puffing",
+      "line": 5,
+      "match": "marking a new",
+      "context": "...news! We're relocating to Denver, marking a new chapter in our journey!!! Experts...",
+      "fix": "Say what happened and let the reader judge its size."
+    },
+    {
+      "code": "B1",
+      "family": "Vagueness",
+      "severity": "strong",
+      "label": "Superficial -ing tail",
+      "line": 5,
+      "match": ", marking",
+      "context": "...ig news! We're relocating to Denver, marking a new chapter in our journey!!! Ex...",
+      "fix": "Delete the tail. If the point is true, give it its own sentence with evidence."
+    },
+    {
+      "code": "B2",
+      "family": "Vagueness",
+      "severity": "strong",
+      "label": "Vague attribution",
+      "line": 6,
+      "match": "Experts say",
+      "context": "...ng a new chapter in our journey!!! Experts say the market is cooling. Overall, it...",
+      "fix": "Name the source or own the opinion ('I think')."
+    },
+    {
+      "code": "C2",
+      "family": "Rhythm",
+      "severity": "strong",
+      "label": "Negative parallelism",
+      "line": 7,
+      "match": "isn't a move, it's",
+      "context": "...fee was charged incorrectly. This isn't a move, it's a fresh start. It's not a house. I...",
+      "fix": "State the positive claim. Keep a real contrast once per piece at most."
+    },
+    {
+      "code": "C2x",
+      "family": "Rhythm",
+      "severity": "strong",
+      "label": "Negative parallelism across sentences",
+      "line": 7,
+      "match": "It's not a house. It's",
+      "context": "...isn't a move, it's a fresh start. It's not a house. It's a home. We delve into the intricat...",
+      "fix": "State the positive claim directly."
+    },
+    {
+      "code": "A4",
+      "family": "Inflation",
+      "severity": "strong",
+      "label": "'Despite challenges' formula",
+      "line": 10,
+      "match": "Despite these challenges",
+      "context": "...en said it was very, really cheap. Despite these challenges, only time will tell. Looking ahea...",
+      "fix": "Name the real problem plainly where it belongs, or drop the ritual."
+    },
+    {
+      "code": "A4",
+      "family": "Inflation",
+      "severity": "strong",
+      "label": "'Despite challenges' formula",
+      "line": 10,
+      "match": "only time will tell",
+      "context": "...y cheap. Despite these challenges, only time will tell. Looking ahead, the future prospec...",
+      "fix": "Name the real problem plainly where it belongs, or drop the ritual."
+    },
+    {
+      "code": "A4",
+      "family": "Inflation",
+      "severity": "strong",
+      "label": "'Despite challenges' formula",
+      "line": 10,
+      "match": "Looking ahead,",
+      "context": "...e challenges, only time will tell. Looking ahead, the future prospects are bright –...",
+      "fix": "Name the real problem plainly where it belongs, or drop the ritual."
+    },
+    {
+      "code": "A4",
+      "family": "Inflation",
+      "severity": "strong",
+      "label": "'Despite challenges' formula",
+      "line": 10,
+      "match": "future prospects",
+      "context": "...time will tell. Looking ahead, the future prospects are bright – really. I am writing...",
+      "fix": "Name the real problem plainly where it belongs, or drop the ritual."
+    },
+    {
+      "code": "B5",
+      "family": "Vagueness",
+      "severity": "strong",
+      "label": "Placeholder left in",
+      "line": 11,
+      "match": "[Name]",
+      "context": "...y. I am writing to inform you that [Name] will attend on 2026-XX-XX (insert...",
+      "fix": "Fill it or delete it, and tell the user what's missing."
+    },
+    {
+      "code": "B5",
+      "family": "Vagueness",
+      "severity": "strong",
+      "label": "Placeholder left in",
+      "line": 11,
+      "match": "2026-XX-XX",
+      "context": "...orm you that [Name] will attend on 2026-XX-XX (insert link) {{date}}.",
+      "fix": "Fill it or delete it, and tell the user what's missing."
+    },
+    {
+      "code": "B5",
+      "family": "Vagueness",
+      "severity": "strong",
+      "label": "Placeholder left in",
+      "line": 11,
+      "match": "(insert link)",
+      "context": "...t [Name] will attend on 2026-XX-XX (insert link) {{date}}.",
+      "fix": "Fill it or delete it, and tell the user what's missing."
+    },
+    {
+      "code": "B5",
+      "family": "Vagueness",
+      "severity": "strong",
+      "label": "Placeholder left in",
+      "line": 11,
+      "match": "{{date}}",
+      "context": "...attend on 2026-XX-XX (insert link) {{date}}.",
+      "fix": "Fill it or delete it, and tell the user what's missing."
+    },
+    {
+      "code": "D3",
+      "family": "Packaging",
+      "severity": "moderate",
+      "label": "Title Case heading",
+      "line": 1,
+      "match": "What This Means For Our Family",
+      "context": "# What This Means For Our Family",
+      "fix": "Use sentence case, or drop the heading."
+    },
+    {
+      "code": "D4",
+      "family": "Packaging",
+      "severity": "moderate",
+      "label": "Emoji as formatting",
+      "line": 5,
+      "match": "🎉",
+      "context": "...ior to the move. - **Timing:** TBD 🎉 Big news! We're relocating to Denv...",
+      "fix": "Remove it."
+    },
+    {
+      "code": "D5m",
+      "family": "Packaging",
+      "severity": "moderate",
+      "label": "Soft recap opener",
+      "line": 6,
+      "match": "Overall,",
+      "context": "...Experts say the market is cooling. Overall, it was decided by the board that t...",
+      "fix": "Check whether this sentence restates the piece. If so, cut it."
+    },
+    {
+      "code": "C6",
+      "family": "Rhythm",
+      "severity": "moderate",
+      "label": "Em dash",
+      "line": 10,
+      "match": "–",
+      "context": "...ad, the future prospects are bright – really. I am writing to inform you...",
+      "fix": "Pick the punctuation that fits: comma, colon, parentheses, or a new sentence."
+    },
+    {
+      "code": "D6m",
+      "family": "Packaging",
+      "severity": "moderate",
+      "label": "Stock opener",
+      "line": 11,
+      "match": "I am writing to inform",
+      "context": "...ure prospects are bright – really. I am writing to inform you that [Name] will attend on 202...",
+      "fix": "Open on the point, or on the user's own greeting."
+    },
+    {
+      "code": "X1",
+      "family": "Voice",
+      "severity": "weak",
+      "label": "Exclamation points",
+      "line": 0,
+      "match": "4 exclamation points",
+      "context": "",
+      "fix": "The user's voice runs about one per message."
+    },
+    {
+      "code": "H1",
+      "family": "Plain verbs",
+      "severity": "weak",
+      "label": "Stiff verb",
+      "line": 3,
+      "match": "utilize",
+      "context": "...Our Family - **Budget:** we will utilize the savings prior to the move. - *...",
+      "fix": "Use the plain verb: use, start, help, try, before, move, wrote, about."
+    },
+    {
+      "code": "H1",
+      "family": "Plain verbs",
+      "severity": "weak",
+      "label": "Stiff verb",
+      "line": 3,
+      "match": "prior to",
+      "context": "...get:** we will utilize the savings prior to the move. - **Timing:** TBD 🎉 Big...",
+      "fix": "Use the plain verb: use, start, help, try, before, move, wrote, about."
+    },
+    {
+      "code": "H1",
+      "family": "Plain verbs",
+      "severity": "weak",
+      "label": "Stiff verb",
+      "line": 5,
+      "match": "relocating",
+      "context": "...**Timing:** TBD 🎉 Big news! We're relocating to Denver, marking a new chapter i...",
+      "fix": "Use the plain verb: use, start, help, try, before, move, wrote, about."
+    }
+  ]
+}

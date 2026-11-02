@@ -1,0 +1,40 @@
+{
+  "words": 58,
+  "counts": {
+    "strong": 0,
+    "moderate": 0,
+    "weak": 0
+  },
+  "strong_plus_moderate_per_100_words": 0.0,
+  "rhythm": {
+    "sentences": 5,
+    "mean": 10.8,
+    "spread": 4.2,
+    "shortest": 6,
+    "longest": 17,
+    "in_8_20_band_pct": 60
+  },
+  "punctuation": {
+    "comma": 4,
+    "period": 5,
+    "semicolon": 0,
+    "colon": 0,
+    "parens": 0,
+    "question": 0,
+    "exclamation": 0,
+    "em_dash": 0
+  },
+  "em_dash_per_100_words": 0.0,
+  "vocabulary": {
+    "distinctive": {},
+    "common": {},
+    "other": {}
+  },
+  "writing_without_bullshit": {
+    "passive_candidates": 0,
+    "weasel_words": 0,
+    "intensifiers": 0,
+    "jargon": 0
+  },
+  "findings": []
+}

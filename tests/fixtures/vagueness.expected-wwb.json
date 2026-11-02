@@ -1,0 +1,203 @@
+{
+  "words": 76,
+  "counts": {
+    "strong": 5,
+    "moderate": 8,
+    "weak": 3
+  },
+  "strong_plus_moderate_per_100_words": 17.11,
+  "rhythm": {
+    "sentences": 5,
+    "mean": 15.2,
+    "spread": 3.7,
+    "shortest": 8,
+    "longest": 18,
+    "in_8_20_band_pct": 100
+  },
+  "punctuation": {
+    "comma": 1,
+    "period": 5,
+    "semicolon": 0,
+    "colon": 0,
+    "parens": 0,
+    "question": 0,
+    "exclamation": 0,
+    "em_dash": 0
+  },
+  "em_dash_per_100_words": 0.0,
+  "vocabulary": {
+    "distinctive": {
+      "garner": 1
+    },
+    "common": {},
+    "other": {}
+  },
+  "writing_without_bullshit": {
+    "passive_candidates": 3,
+    "weasel_words": 0,
+    "intensifiers": 0,
+    "jargon": 0
+  },
+  "findings": [
+    {
+      "code": "A3",
+      "family": "Inflation",
+      "severity": "strong",
+      "label": "Recognition / coverage emphasis",
+      "line": 1,
+      "match": "garnered attention",
+      "context": "Our block party garnered attention from the local paper and has been...",
+      "fix": "Say what the coverage said, or cut it."
+    },
+    {
+      "code": "A3",
+      "family": "Inflation",
+      "severity": "strong",
+      "label": "Recognition / coverage emphasis",
+      "line": 1,
+      "match": "has been featured in",
+      "context": "...attention from the local paper and has been featured in the neighborhood newsletter. It's...",
+      "fix": "Say what the coverage said, or cut it."
+    },
+    {
+      "code": "B4",
+      "family": "Vagueness",
+      "severity": "strong",
+      "label": "Hedging disclaimer / corrective framing",
+      "line": 2,
+      "match": "It's worth noting",
+      "context": "...ed in the neighborhood newsletter. It's worth noting that the fireworks should be treat...",
+      "fix": "Cut the throat-clearing. Keep a real caveat as one plain sentence where it applies."
+    },
+    {
+      "code": "B4",
+      "family": "Vagueness",
+      "severity": "strong",
+      "label": "Hedging disclaimer / corrective framing",
+      "line": 2,
+      "match": "should be treated as a backup plan rather than",
+      "context": "...'s worth noting that the fireworks should be treated as a backup plan rather than the main event. My uncle has been...",
+      "fix": "Cut the throat-clearing. Keep a real caveat as one plain sentence where it applies."
+    },
+    {
+      "code": "B1",
+      "family": "Vagueness",
+      "severity": "strong",
+      "label": "Superficial -ing tail",
+      "line": 4,
+      "match": ", ensuring",
+      "context": "...while preserving the original tone, ensuring clarity for everyone. We picked ta...",
+      "fix": "Delete the tail. If the point is true, give it its own sentence with evidence."
+    },
+    {
+      "code": "W1",
+      "family": "WWB",
+      "severity": "moderate",
+      "label": "Passive voice (candidate)",
+      "line": 1,
+      "match": "been featured",
+      "context": "...ntion from the local paper and has been featured in the neighborhood newsletter. It...",
+      "fix": "Ask who acts and make them the subject. Keep it only if the actor truly doesn't matter."
+    },
+    {
+      "code": "W1",
+      "family": "WWB",
+      "severity": "moderate",
+      "label": "Passive voice (candidate)",
+      "line": 2,
+      "match": "be treated",
+      "context": "...h noting that the fireworks should be treated as a backup plan rather than the m...",
+      "fix": "Ask who acts and make them the subject. Keep it only if the actor truly doesn't matter."
+    },
+    {
+      "code": "B3",
+      "family": "Vagueness",
+      "severity": "moderate",
+      "label": "Vague connection",
+      "line": 3,
+      "match": "has been involved with",
+      "context": "...ther than the main event. My uncle has been involved with the parade committee and is associ...",
+      "fix": "State the actual relationship: worked at, founded, taught, married."
+    },
+    {
+      "code": "B3",
+      "family": "Vagueness",
+      "severity": "moderate",
+      "label": "Vague connection",
+      "line": 3,
+      "match": "associated with",
+      "context": "...d with the parade committee and is associated with the fire department. I rewrote the...",
+      "fix": "State the actual relationship: worked at, founded, taught, married."
+    },
+    {
+      "code": "W1",
+      "family": "WWB",
+      "severity": "moderate",
+      "label": "Passive voice (candidate)",
+      "line": 3,
+      "match": "is associated",
+      "context": "...lved with the parade committee and is associated with the fire department. I rewrot...",
+      "fix": "Ask who acts and make them the subject. Keep it only if the actor truly doesn't matter."
+    },
+    {
+      "code": "D7",
+      "family": "Packaging",
+      "severity": "moderate",
+      "label": "Procedural assurance",
+      "line": 4,
+      "match": "for clarity and flow",
+      "context": "...e department. I rewrote the invite for clarity and flow while preserving the original tone...",
+      "fix": "Say concretely what changed."
+    },
+    {
+      "code": "D7",
+      "family": "Packaging",
+      "severity": "moderate",
+      "label": "Procedural assurance",
+      "line": 4,
+      "match": "while preserving the original",
+      "context": "...te the invite for clarity and flow while preserving the original tone, ensuring clarity for everyon...",
+      "fix": "Say concretely what changed."
+    },
+    {
+      "code": "D7",
+      "family": "Packaging",
+      "severity": "moderate",
+      "label": "Procedural assurance",
+      "line": 4,
+      "match": "ensuring clarity",
+      "context": "...hile preserving the original tone, ensuring clarity for everyone. We picked tacos rath...",
+      "fix": "Say concretely what changed."
+    },
+    {
+      "code": "C7",
+      "family": "Rhythm",
+      "severity": "weak",
+      "label": "AI vocabulary",
+      "line": 0,
+      "match": "garner",
+      "context": "",
+      "fix": "Replace each with the plain or specific word. See ai-tells.md section 7."
+    },
+    {
+      "code": "C2r",
+      "family": "Rhythm",
+      "severity": "weak",
+      "label": "'Rather than' contrast",
+      "line": 2,
+      "match": "rather than",
+      "context": "...should be treated as a backup plan rather than the main event. My uncle has been...",
+      "fix": "Fine once. In clusters it reads as a corrective framing."
+    },
+    {
+      "code": "C2r",
+      "family": "Rhythm",
+      "severity": "weak",
+      "label": "'Rather than' contrast",
+      "line": 5,
+      "match": "rather than",
+      "context": "...rity for everyone. We picked tacos rather than burgers this year.",
+      "fix": "Fine once. In clusters it reads as a corrective framing."
+    }
+  ]
+}
