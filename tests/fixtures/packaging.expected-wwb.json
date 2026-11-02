@@ -1,0 +1,215 @@
+{
+  "words": 279,
+  "counts": {
+    "strong": 0,
+    "moderate": 15,
+    "weak": 2
+  },
+  "strong_plus_moderate_per_100_words": 5.38,
+  "rhythm": {
+    "sentences": 19,
+    "mean": 14.2,
+    "spread": 12.7,
+    "shortest": 2,
+    "longest": 62,
+    "in_8_20_band_pct": 58
+  },
+  "punctuation": {
+    "comma": 0,
+    "period": 15,
+    "semicolon": 0,
+    "colon": 1,
+    "parens": 0,
+    "question": 0,
+    "exclamation": 4,
+    "em_dash": 0
+  },
+  "em_dash_per_100_words": 0.0,
+  "vocabulary": {
+    "distinctive": {},
+    "common": {
+      "key (adj)": 1
+    },
+    "other": {
+      "circle back": 1
+    }
+  },
+  "writing_without_bullshit": {
+    "passive_candidates": 1,
+    "weasel_words": 4,
+    "intensifiers": 3,
+    "jargon": 3
+  },
+  "findings": [
+    {
+      "code": "D1",
+      "family": "Packaging",
+      "severity": "moderate",
+      "label": "Bold overuse",
+      "line": 0,
+      "match": "3 bold spans",
+      "context": "Important:, Parking, Gifts",
+      "fix": "No bold in personal prose, or one item the reader can't miss."
+    },
+    {
+      "code": "W5",
+      "family": "WWB",
+      "severity": "moderate",
+      "label": "Over 250 words",
+      "line": 0,
+      "match": "279 words",
+      "context": "",
+      "fix": "Bernoff's ceiling for email. Cut, or confirm the length is truly needed (a toast with a set length is exempt)."
+    },
+    {
+      "code": "D3",
+      "family": "Packaging",
+      "severity": "moderate",
+      "label": "Title Case heading",
+      "line": 1,
+      "match": "Our Big Family Move To Denver",
+      "context": "# Our Big Family Move To Denver",
+      "fix": "Use sentence case, or drop the heading."
+    },
+    {
+      "code": "D3",
+      "family": "Packaging",
+      "severity": "moderate",
+      "label": "Title Case heading",
+      "line": 3,
+      "match": "Key Takeaways For Everyone",
+      "context": "## Key Takeaways For Everyone",
+      "fix": "Use sentence case, or drop the heading."
+    },
+    {
+      "code": "W3",
+      "family": "WWB",
+      "severity": "moderate",
+      "label": "Intensifier",
+      "line": 9,
+      "match": "very",
+      "context": "...eeded at all. This next part is a very long sentence that keeps going bec...",
+      "fix": "Cut it, or replace it with the fact that justified it."
+    },
+    {
+      "code": "W1",
+      "family": "WWB",
+      "severity": "moderate",
+      "label": "Passive voice (candidate)",
+      "line": 13,
+      "match": "was paid by",
+      "context": "...by the company and the final bill was paid by my dad. Many friends said the plan...",
+      "fix": "Ask who acts and make them the subject. Keep it only if the actor truly doesn't matter."
+    },
+    {
+      "code": "W2",
+      "family": "WWB",
+      "severity": "moderate",
+      "label": "Weasel word",
+      "line": 13,
+      "match": "Many",
+      "context": "...the final bill was paid by my dad. Many friends said the plan was really s...",
+      "fix": "Replace with a number, a name, or a plain committed claim. Keep it if it's literally true and specific enough."
+    },
+    {
+      "code": "W2",
+      "family": "WWB",
+      "severity": "moderate",
+      "label": "Weasel word",
+      "line": 13,
+      "match": "several",
+      "context": "...said the plan was really smart and several neighbors said it was incredibly b...",
+      "fix": "Replace with a number, a name, or a plain committed claim. Keep it if it's literally true and specific enough."
+    },
+    {
+      "code": "W2",
+      "family": "WWB",
+      "severity": "moderate",
+      "label": "Weasel word",
+      "line": 13,
+      "match": "A lot of",
+      "context": "...rd and touch base before the move. A lot of people said the timing was signifi...",
+      "fix": "Replace with a number, a name, or a plain committed claim. Keep it if it's literally true and specific enough."
+    },
+    {
+      "code": "W2",
+      "family": "WWB",
+      "severity": "moderate",
+      "label": "Weasel word",
+      "line": 13,
+      "match": "significant",
+      "context": "...lot of people said the timing was significant.",
+      "fix": "Replace with a number, a name, or a plain committed claim. Keep it if it's literally true and specific enough."
+    },
+    {
+      "code": "W3",
+      "family": "WWB",
+      "severity": "moderate",
+      "label": "Intensifier",
+      "line": 13,
+      "match": "really",
+      "context": "...ad. Many friends said the plan was really smart and several neighbors said i...",
+      "fix": "Cut it, or replace it with the fact that justified it."
+    },
+    {
+      "code": "W3",
+      "family": "WWB",
+      "severity": "moderate",
+      "label": "Intensifier",
+      "line": 13,
+      "match": "incredibly",
+      "context": "...and several neighbors said it was incredibly brave. We want to circle back with...",
+      "fix": "Cut it, or replace it with the fact that justified it."
+    },
+    {
+      "code": "W4",
+      "family": "WWB",
+      "severity": "moderate",
+      "label": "Jargon / stock phrase",
+      "line": 13,
+      "match": "circle back",
+      "context": "...t was incredibly brave. We want to circle back with everyone going forward and to...",
+      "fix": "Say it the way you'd say it out loud to this person."
+    },
+    {
+      "code": "W4",
+      "family": "WWB",
+      "severity": "moderate",
+      "label": "Jargon / stock phrase",
+      "line": 13,
+      "match": "going forward",
+      "context": "...want to circle back with everyone going forward and touch base before the move. A...",
+      "fix": "Say it the way you'd say it out loud to this person."
+    },
+    {
+      "code": "W4",
+      "family": "WWB",
+      "severity": "moderate",
+      "label": "Jargon / stock phrase",
+      "line": 13,
+      "match": "touch base",
+      "context": "...ck with everyone going forward and touch base before the move. A lot of people s...",
+      "fix": "Say it the way you'd say it out loud to this person."
+    },
+    {
+      "code": "C7",
+      "family": "Rhythm",
+      "severity": "weak",
+      "label": "AI vocabulary",
+      "line": 0,
+      "match": "circle back, key (adj)",
+      "context": "",
+      "fix": "Replace each with the plain or specific word. See ai-tells.md section 7."
+    },
+    {
+      "code": "R1",
+      "family": "Rhythm",
+      "severity": "weak",
+      "label": "Long sentence (62 words)",
+      "line": 0,
+      "match": "This next part is a very long sentence that keeps going because we wanted to tha...",
+      "context": "",
+      "fix": "Check whether it splits cleanly."
+    }
+  ]
+}

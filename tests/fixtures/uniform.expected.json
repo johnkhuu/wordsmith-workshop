@@ -1,0 +1,56 @@
+{
+  "words": 167,
+  "counts": {
+    "strong": 0,
+    "moderate": 2,
+    "weak": 0
+  },
+  "strong_plus_moderate_per_100_words": 1.2,
+  "rhythm": {
+    "sentences": 12,
+    "mean": 13.9,
+    "spread": 0.8,
+    "shortest": 12,
+    "longest": 15,
+    "in_8_20_band_pct": 100
+  },
+  "punctuation": {
+    "comma": 0,
+    "period": 12,
+    "semicolon": 0,
+    "colon": 0,
+    "parens": 0,
+    "question": 0,
+    "exclamation": 0,
+    "em_dash": 0
+  },
+  "em_dash_per_100_words": 0.0,
+  "vocabulary": {
+    "distinctive": {},
+    "common": {},
+    "other": {}
+  },
+  "writing_without_bullshit": null,
+  "findings": [
+    {
+      "code": "C5",
+      "family": "Rhythm",
+      "severity": "moderate",
+      "label": "Uniform sentence length",
+      "line": 0,
+      "match": "spread 0.8 words, 100% of sentences in the 8-20 band",
+      "context": "",
+      "fix": "Vary on purpose: a short punch after a long sentence, a question, a fragment."
+    },
+    {
+      "code": "C5p",
+      "family": "Rhythm",
+      "severity": "moderate",
+      "label": "Flat punctuation",
+      "line": 0,
+      "match": "only commas and periods across the piece",
+      "context": "",
+      "fix": "Where it fits, use a colon, a question, or a parenthetical aside."
+    }
+  ]
+}
