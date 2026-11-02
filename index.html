@@ -21,6 +21,7 @@
     <nav class="site-nav" aria-label="Sections">
       <a href="#film">Film</a>
       <a href="#how">How it works</a>
+      <a href="#workshop">Workshop</a>
       <a href="#methods">Methods</a>
       <a href="#scanner">Scanner</a>
     </nav>
@@ -34,8 +35,8 @@
       <h1 id="hero-title">Lead with <em>the point.</em> Back it with real details.</h1>
       <p class="lede">Wordsmith Workshop drafts and checks the writing you send as yourself: a note to the contractor, a complaint to the airline, a toast, a card. Every piece puts your point first and comes back sounding like you.</p>
       <div class="cta-row">
-        <a class="btn btn-primary" href="#scanner">Scan a draft</a>
-        <a class="btn btn-quiet" href="#how">How it works</a>
+        <a class="btn btn-primary" href="#workshop">Rewrite a draft</a>
+        <a class="btn btn-quiet" href="#scanner">Scan a draft</a>
       </div>
       <div class="film-frame" id="film">
         <figure class="film" data-film data-vo-base="assets/film/vo/">
@@ -110,6 +111,79 @@
           <p>A scan for 36 patterns that read as machine-made or padded, then a read for sentences that could be anyone's. It fixes what it finds before you see the draft.</p>
         </li>
       </ol>
+      <p class="how-note">No Claude to hand? <a href="#workshop">The workshop</a> below runs the same methods in your browser, so you can shape the rewrite yourself.</p>
+    </div>
+  </section>
+
+  <section class="band band-workshop" id="workshop" aria-labelledby="workshop-title">
+    <div class="wrap">
+      <header class="section-head">
+        <p class="eyebrow">The workshop</p>
+        <h2 id="workshop-title">Rewrite a draft, <em>method by method</em></h2>
+        <p>Paste something you wrote and pick your methods. Each method becomes a few slots, taken from the skill's own method guides, and your sentences fill them. The rewrite updates as you work, with each method's checks beside it. There's no AI here: it sorts your words and coaches the edit, and nothing you type leaves this page.</p>
+      </header>
+      <noscript><p class="ws-noscript">The workshop needs JavaScript. Turn it on to paste a draft and rewrite it.</p></noscript>
+
+      <div class="ws" id="ws" hidden>
+        <div class="ws-build">
+          <section class="ws-step" aria-labelledby="ws-h-draft">
+            <h3 class="ws-step-title" id="ws-h-draft"><span class="ws-n" aria-hidden="true">1</span>Paste your draft</h3>
+            <div class="ws-examples" role="group" aria-labelledby="ws-ex-label">
+              <span class="controls-label" id="ws-ex-label">Examples</span>
+              <button type="button" class="chip" data-example="pyramid" aria-pressed="false">Deck repair</button>
+              <button type="button" class="chip" data-example="scqa" aria-pressed="false">Thanksgiving</button>
+              <button type="button" class="chip" data-example="mece" aria-pressed="false">Trip plan</button>
+              <button type="button" class="chip" data-example="inverted" aria-pressed="false">Moving news</button>
+              <button type="button" class="chip" data-example="wwb" aria-pressed="false">Double charge</button>
+              <button type="button" class="chip" data-example="data" aria-pressed="false">Phone plan</button>
+              <button type="button" class="chip chip-quiet" data-example="clear">Clear</button>
+            </div>
+            <label class="sr-only" for="ws-draft">Your draft</label>
+            <textarea id="ws-draft" class="ws-draft" rows="5" placeholder="Paste an email, a text or a note. The greeting and sign-off stay yours."></textarea>
+            <p class="ws-draft-meta" id="ws-draft-meta"></p>
+          </section>
+
+          <section class="ws-step" aria-labelledby="ws-h-methods">
+            <h3 class="ws-step-title" id="ws-h-methods"><span class="ws-n" aria-hidden="true">2</span>Pick your methods</h3>
+            <div class="ws-methods" role="group" aria-labelledby="ws-h-methods">
+              <label class="ws-method is-locked"><input type="checkbox" checked disabled><span class="ws-method-name">Pyramid</span><span class="ws-method-job">always on</span></label>
+              <label class="ws-method"><input type="checkbox" data-method="scqa"><span class="ws-method-name">SCQA</span><span class="ws-method-job">the opening</span></label>
+              <label class="ws-method"><input type="checkbox" data-method="mece"><span class="ws-method-name">MECE</span><span class="ws-method-job">the grouping</span></label>
+              <label class="ws-method"><input type="checkbox" data-method="inverted"><span class="ws-method-name">Inverted Pyramid</span><span class="ws-method-job">the order</span></label>
+              <label class="ws-method"><input type="checkbox" data-method="wwb"><span class="ws-method-name">Writing Without Bullshit</span><span class="ws-method-job">the edit</span></label>
+              <label class="ws-method"><input type="checkbox" data-method="data"><span class="ws-method-name">Storytelling with Data</span><span class="ws-method-job">the numbers</span></label>
+            </div>
+            <div class="ws-build-row">
+              <button type="button" class="btn btn-primary" id="ws-fill">Fill the slots from my draft</button>
+              <button type="button" class="btn btn-quiet" id="ws-undo" hidden>Undo</button>
+            </div>
+          </section>
+
+          <section class="ws-step" aria-labelledby="ws-h-shape">
+            <h3 class="ws-step-title" id="ws-h-shape"><span class="ws-n" aria-hidden="true">3</span>Shape it</h3>
+            <a class="ws-jump" href="#ws-h-result">Jump to your rewrite</a>
+            <div class="ws-tray">
+              <p class="ws-tray-hint" id="ws-tray-hint">Your sentences. Click one to add it to <strong id="ws-target">Your point</strong>, or click a slot first to choose where it goes. Struck-through lines read as filler.</p>
+              <ul class="ws-chips ws-user" id="ws-chips"></ul>
+            </div>
+            <div class="ws-slots" id="ws-slots"></div>
+          </section>
+        </div>
+
+        <aside class="ws-result" aria-labelledby="ws-h-result">
+          <h3 class="ws-step-title" id="ws-h-result"><span class="ws-n" aria-hidden="true">4</span>Your rewrite</h3>
+          <div class="ws-preview ws-user" id="ws-preview" role="region" aria-label="Your rewrite" tabindex="0"></div>
+          <div class="ws-actions">
+            <button type="button" class="btn btn-primary btn-small" id="ws-copy">Copy</button>
+            <button type="button" class="btn btn-quiet btn-small" id="ws-to-scanner">Open in the scanner</button>
+            <label class="toggle"><input type="checkbox" id="ws-trim" checked><span>Trim stock phrases</span></label>
+          </div>
+          <p class="ws-cuts" id="ws-cuts" hidden></p>
+          <dl class="ws-score" id="ws-score"></dl>
+          <div class="ws-checks" id="ws-checks"></div>
+          <p class="sr-only" role="status" aria-live="polite" id="ws-status"></p>
+        </aside>
+      </div>
     </div>
   </section>
 
@@ -153,6 +227,7 @@
               <li>A date range came in. It makes yes easy, and that's the job of everything under the point.</li>
             </ol>
           </div>
+          <p class="method-try"><button type="button" class="btn btn-primary btn-small" data-try="pyramid">Try it in the workshop</button> <span>Loads this “before” draft so you can rewrite it yourself.</span></p>
         </article>
         <article class="method-panel" role="tabpanel" id="panel-scqa" aria-labelledby="tab-scqa" tabindex="0">
           <header class="method-head">
@@ -178,6 +253,7 @@
               <li>Then the answer, with a time and a date. “A lot of moving pieces” went, because it told nobody anything.</li>
             </ol>
           </div>
+          <p class="method-try"><button type="button" class="btn btn-primary btn-small" data-try="scqa">Try it in the workshop</button> <span>Loads this “before” draft so you can rewrite it yourself.</span></p>
         </article>
         <article class="method-panel" role="tabpanel" id="panel-mece" aria-labelledby="tab-mece" tabindex="0">
           <header class="method-head">
@@ -203,6 +279,7 @@
               <li>The cabin came up twice and now appears once. The scanner can't see a muddle like this one. The method can.</li>
             </ol>
           </div>
+          <p class="method-try"><button type="button" class="btn btn-primary btn-small" data-try="mece">Try it in the workshop</button> <span>Loads this “before” draft so you can rewrite it yourself.</span></p>
         </article>
         <article class="method-panel" role="tabpanel" id="panel-inverted" aria-labelledby="tab-inverted" tabindex="0">
           <header class="method-head">
@@ -228,6 +305,7 @@
               <li>The backstory went. It mattered more to the people moving than to the people reading.</li>
             </ol>
           </div>
+          <p class="method-try"><button type="button" class="btn btn-primary btn-small" data-try="inverted">Try it in the workshop</button> <span>Loads this “before” draft so you can rewrite it yourself.</span></p>
         </article>
         <article class="method-panel" role="tabpanel" id="panel-wwb" aria-labelledby="tab-wwb" tabindex="0">
           <header class="method-head">
@@ -253,6 +331,7 @@
               <li>Hedges and stock phrases came out: “appears,” “possibly,” “at your earliest convenience.” 38 words became 18, and the deadline makes it easy to act on.</li>
             </ol>
           </div>
+          <p class="method-try"><button type="button" class="btn btn-primary btn-small" data-try="wwb">Try it in the workshop</button> <span>Loads this “before” draft so you can rewrite it yourself.</span></p>
         </article>
         <article class="method-panel" role="tabpanel" id="panel-data" aria-labelledby="tab-data" tabindex="0">
           <header class="method-head">
@@ -278,6 +357,7 @@
               <li>“A lot cheaper” and “significant” asked the reader to take it on trust. The numbers don't.</li>
             </ol>
           </div>
+          <p class="method-try"><button type="button" class="btn btn-primary btn-small" data-try="data">Try it in the workshop</button> <span>Loads this “before” draft so you can rewrite it yourself.</span></p>
         </article>
       </div>
     </div>
@@ -297,6 +377,7 @@
           <button type="button" class="chip" id="load-before" aria-pressed="true">Thank-you note, before</button>
           <button type="button" class="chip" id="load-after" aria-pressed="false">Same note, after</button>
           <button type="button" class="chip chip-quiet" id="clear-text">Clear</button>
+          <button type="button" class="chip chip-quiet" id="scan-to-workshop">Rewrite in the workshop</button>
         </div>
         <label class="toggle" for="wwb">
           <input type="checkbox" id="wwb">
@@ -360,6 +441,8 @@
 <script src="assets/scanner.js"></script>
 <script src="assets/app.js"></script>
 <script src="assets/methods.js"></script>
+<script src="assets/workshop-core.js"></script>
+<script src="assets/workshop.js"></script>
 <script src="assets/film/film-kit.js" defer></script>
 <script src="assets/film/film-scenes.js" defer></script>
 <script src="assets/film/film-audio.js" defer></script>

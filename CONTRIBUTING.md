@@ -109,8 +109,8 @@ npm test
 
 | Command | What it runs |
 |---|---|
-| `npm run test:unit` | Scanner tests: parity with the skill's Python scanner, boundary cases for every threshold, offsets, speed and edge cases |
-| `npm run test:e2e` | Browser tests in Chromium: the report, highlights, samples, the Writing Without Bullshit switch, escaping, layout at four widths in both themes, and a scan of the page's own copy |
+| `npm run test:unit` | Scanner tests (parity with the skill's Python scanner, boundary cases for every threshold, offsets, speed and edge cases), workshop logic tests, and film timeline tests |
+| `npm run test:e2e` | Browser tests in Chromium: the scanner, the workshop, the method tabs, the film player, escaping, layout at four widths in both themes, and a scan of the page's own copy |
 | `npm start` | Serves the site at http://localhost:8000 |
 
 The browser tests block requests to other hosts, so they don't need the network and run with the fallback fonts.
@@ -127,6 +127,17 @@ The browser tests block requests to other hosts, so they don't need the network 
 
 2. Run `npm run test:unit`, and update `assets/scanner.js` until it passes.
 3. If the change adds a new check or threshold, add a fixture or a boundary case in `tests/fixtures/boundaries.json` that triggers it. A unit test reads the list of checks from the scanner and fails if any of them has no fixture.
+
+## Changing the workshop
+
+The workshop's rules live in `assets/workshop-core.js`, and each one comes from the skill's method guides (`references/minto.md` and `references/methods/*.md`):
+
+- `slotCopy` holds each slot's label, hint and example. A method that owns a slot changes its label: the point becomes the Answer under SCQA, the Lede under Inverted Pyramid and the Big Idea under Storytelling with Data.
+- `assemble` puts the slots in each method's order. The order follows the table in `references/methods.md`: Minto's skeleton first, then MECE's groups, then the opening and the order.
+- `check` holds each method's checklist. Write a check as automatic only when a rule can decide it reliably; otherwise make it a `self` check (a question for the writer).
+- `EXAMPLES` must match the "before" drafts in the Methods section. A unit test compares them.
+
+When you change a check, run `npm run test:unit`. One test rebuilds each method's "after" example in the slots and fails if any of that method's checks complain about it, so the checks can't get stricter than the skill's own examples.
 
 ## Changing the film
 
