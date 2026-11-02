@@ -1,0 +1,190 @@
+{
+  "words": 100,
+  "counts": {
+    "strong": 8,
+    "moderate": 6,
+    "weak": 1
+  },
+  "strong_plus_moderate_per_100_words": 14.0,
+  "rhythm": {
+    "sentences": 8,
+    "mean": 12,
+    "spread": 5.2,
+    "shortest": 6,
+    "longest": 23,
+    "in_8_20_band_pct": 50
+  },
+  "punctuation": {
+    "comma": 8,
+    "period": 6,
+    "semicolon": 0,
+    "colon": 0,
+    "parens": 0,
+    "question": 0,
+    "exclamation": 2,
+    "em_dash": 1
+  },
+  "em_dash_per_100_words": 1.0,
+  "vocabulary": {
+    "distinctive": {
+      "testament": 1,
+      "vibrant": 1,
+      "highlighting": 1
+    },
+    "common": {},
+    "other": {}
+  },
+  "writing_without_bullshit": null,
+  "findings": [
+    {
+      "code": "C7",
+      "family": "Rhythm",
+      "severity": "strong",
+      "label": "AI vocabulary cluster",
+      "line": 0,
+      "match": "testament, vibrant, highlighting",
+      "context": "",
+      "fix": "Replace each with the plain or specific word. See ai-tells.md section 7."
+    },
+    {
+      "code": "A1",
+      "family": "Inflation",
+      "severity": "strong",
+      "label": "Significance / legacy puffing",
+      "line": 3,
+      "match": "stands as a",
+      "context": "...last weekend. Your kindness truly stands as a testament to the vibrant community...",
+      "fix": "Say what happened and let the reader judge its size."
+    },
+    {
+      "code": "A1",
+      "family": "Inflation",
+      "severity": "strong",
+      "label": "Significance / legacy puffing",
+      "line": 3,
+      "match": "testament to",
+      "context": "...d. Your kindness truly stands as a testament to the vibrant community we've built...",
+      "fix": "Say what happened and let the reader judge its size."
+    },
+    {
+      "code": "B1",
+      "family": "Vagueness",
+      "severity": "strong",
+      "label": "Superficial -ing tail",
+      "line": 3,
+      "match": ", highlighting",
+      "context": "...mmunity we've built on Maple Street, highlighting what makes this neighborhood so sp...",
+      "fix": "Delete the tail. If the point is true, give it its own sentence with evidence."
+    },
+    {
+      "code": "D6",
+      "family": "Packaging",
+      "severity": "strong",
+      "label": "Chatbot residue",
+      "line": 3,
+      "match": "I hope this message finds you well",
+      "context": "Hi Dana, I hope this message finds you well! I wanted to reach out to say than...",
+      "fix": "Cut it. Sound like a person who knows the reader."
+    },
+    {
+      "code": "C2",
+      "family": "Rhythm",
+      "severity": "strong",
+      "label": "Negative parallelism",
+      "line": 5,
+      "match": "It's not just about feeding a dog — it's",
+      "context": "...kes this neighborhood so special. It's not just about feeding a dog — it's about trust, generosity, and care....",
+      "fix": "State the positive claim. Keep a real contrast once per piece at most."
+    },
+    {
+      "code": "D5",
+      "family": "Packaging",
+      "severity": "strong",
+      "label": "Recap closer",
+      "line": 5,
+      "match": "In summary",
+      "context": "...scuit clearly had a wonderful time. In summary, we are incredibly grateful. Pleas...",
+      "fix": "The point already came first. End on the action or the image."
+    },
+    {
+      "code": "D6",
+      "family": "Packaging",
+      "severity": "strong",
+      "label": "Chatbot residue",
+      "line": 7,
+      "match": "Please don't hesitate to reach out",
+      "context": "...mmary, we are incredibly grateful. Please don't hesitate to reach out if there's ever anything we can do...",
+      "fix": "Cut it. Sound like a person who knows the reader."
+    },
+    {
+      "code": "A2",
+      "family": "Inflation",
+      "severity": "moderate",
+      "label": "Brochure adjective",
+      "line": 3,
+      "match": "vibrant",
+      "context": "...truly stands as a testament to the vibrant community we've built on Maple Str...",
+      "fix": "Replace the adjective with the observation that earned it."
+    },
+    {
+      "code": "C3",
+      "family": "Rhythm",
+      "severity": "moderate",
+      "label": "Copula avoidance",
+      "line": 3,
+      "match": "stands as",
+      "context": "...last weekend. Your kindness truly stands as a testament to the vibrant communi...",
+      "fix": "Use is, are, or has."
+    },
+    {
+      "code": "D6m",
+      "family": "Packaging",
+      "severity": "moderate",
+      "label": "Stock opener",
+      "line": 3,
+      "match": "I wanted to reach out",
+      "context": "...hope this message finds you well! I wanted to reach out to say thank you for watching Bisc...",
+      "fix": "Open on the point, or on the user's own greeting."
+    },
+    {
+      "code": "C6",
+      "family": "Rhythm",
+      "severity": "moderate",
+      "label": "Em dash",
+      "line": 5,
+      "match": "—",
+      "context": "...It's not just about feeding a dog — it's about trust, generosity, and...",
+      "fix": "Pick the punctuation that fits: comma, colon, parentheses, or a new sentence."
+    },
+    {
+      "code": "C8",
+      "family": "Rhythm",
+      "severity": "moderate",
+      "label": "Formulaic transition",
+      "line": 5,
+      "match": "Additionally",
+      "context": "...about trust, generosity, and care. Additionally, the fresh tomatoes you left on th...",
+      "fix": "Cut the transition word; the sentence usually stands on its own."
+    },
+    {
+      "code": "C8",
+      "family": "Rhythm",
+      "severity": "moderate",
+      "label": "Formulaic transition",
+      "line": 5,
+      "match": "Moreover",
+      "context": "...porch were a delightful surprise. Moreover, Biscuit clearly had a wonderful t...",
+      "fix": "Cut the transition word; the sentence usually stands on its own."
+    },
+    {
+      "code": "C1",
+      "family": "Rhythm",
+      "severity": "weak",
+      "label": "Rule of three",
+      "line": 5,
+      "match": "it's about trust, generosity, and care",
+      "context": "...t's not just about feeding a dog — it's about trust, generosity, and care. Additionally, the fresh tomatoes...",
+      "fix": "Count what's true. Two strong items beat three padded ones."
+    }
+  ]
+}
