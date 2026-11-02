@@ -417,3 +417,89 @@ test("on a phone, the answer to a tap shows up where you're looking", async () =
   assert.equal(await inView(), true, "fixed");
   await context.close();
 });
+
+test("a suggested edit applies with one click, and the next note offers its own", async () => {
+  const { page, context, errors } = await open();
+  await page.click('[data-example="wwb"]');
+  await page.click("#wz-rewrite");
+  const first = page.locator(".wz-sug", { hasText: "Could you look into the invoice?" }).first();
+  assert.match(await first.textContent(), /Use this edit/);
+  await first.click();
+  assert.match(await page.textContent("#wz-task .wz-result"), /Used the suggested edit/);
+  assert.match(await rewrite(page), /^Could you look into the invoice\?/);
+  assert.equal(await page.inputValue("#wz-input"), "Could you look into the invoice?");
+  // The detail note is still open, and it has an edit of its own.
+  assert.match(await page.textContent("#wz-task"), /No detail only this message has/);
+  assert.ok(await page.locator(".wz-sug", { hasText: "fill in the blank" }).count());
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test("an edit with a blank fills the box, selects the blank, and saves only once it's filled", async () => {
+  const { page, context, errors } = await open();
+  await page.click('[data-example="pyramid"]');
+  await page.click("#wz-rewrite");
+  await page.locator(".wz-sug", { hasText: "fill in the blank" }).first().click();
+  const box = await page.evaluate(() => {
+    const i = document.getElementById("wz-input");
+    return { value: i.value, selected: i.value.slice(i.selectionStart, i.selectionEnd), focused: document.activeElement === i };
+  });
+  assert.deepEqual(box, { value: "Could we push the deck from the 14th to ___?", selected: "___", focused: true });
+  assert.match(await page.textContent("#wz-task .wz-result"), /Fill in the blank, then save/);
+  // Saving with the blank still there says so, and doesn't save.
+  await page.click('#wz-task [data-action="apply"]');
+  assert.match(await page.textContent("#wz-task .wz-result"), /Fill in the blank \(___\) first/);
+  assert.equal(await page.$eval("#wz-input", (i) => i.value.slice(i.selectionStart, i.selectionEnd)), "___");
+  await page.keyboard.type("the 21st");
+  assert.equal(await page.locator('#wz-task .wz-result[data-blank]').count(), 0, "the blank note goes once it's filled");
+  await page.click('#wz-task [data-action="apply"]');
+  assert.match(await page.textContent("#wz-task"), /Your point is fixed|All fixed/);
+  assert.match(await rewrite(page), /Could we push the deck from the 14th to the 21st\?/);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test("keeping a line as is after picking an edit with a blank puts the line back", async () => {
+  const { page, context } = await open();
+  await page.click('[data-example="pyramid"]');
+  await page.click("#wz-rewrite");
+  const before = await page.inputValue("#wz-input");
+  await page.locator(".wz-sug", { hasText: "fill in the blank" }).first().click();
+  await page.click('#wz-task [data-action="skip"]');
+  assert.doesNotMatch(await rewrite(page), /___/);
+  assert.ok((await rewrite(page)).includes(before));
+  await context.close();
+});
+
+test("every example can be finished with the suggested edits alone", async () => {
+  const { page, context, errors } = await open();
+  const fills = { "$": "40", by: "Friday", on: "Friday", to: "the 21st", before: "Friday", for: "the trip" };
+  for (const key of Object.keys(W.EXAMPLES)) {
+    await page.click('.wz-step[data-go="paste"]');
+    await page.click(`[data-example="${key}"]`);
+    await page.click("#wz-rewrite");
+    for (let i = 0; i < 12; i++) {
+      const card = await page.evaluate(() => document.getElementById("wz-task").dataset.key || "");
+      if (!card) break;
+      const sug = page.locator("#wz-task .wz-sug, #wz-task .wz-sug-chip").first();
+      if (!(await sug.count())) { await page.click('#wz-task [data-action="skip"]'); continue; }
+      await sug.click();
+      // Fill each blank with something that fits the words around it.
+      for (let k = 0; k < 4; k++) {
+        const v = await page.$eval("#wz-input", (x) => x.value).catch(() => "");
+        if (!v.includes("___")) break;
+        const lead = (v.slice(0, v.indexOf("___")).match(/(\$|\b\w+)\s*$/) || [])[1] || "";
+        await page.keyboard.type(fills[lead.toLowerCase()] || "the rent");
+        await page.click('#wz-task [data-action="apply"]');
+      }
+      const result = await page.textContent("#wz-task .wz-result").catch(() => "");
+      assert.ok(result, `${key}: a suggested edit on "${card}" gave no answer`);
+      const still = await page.evaluate(() => document.getElementById("wz-task").dataset.key || "");
+      if (still === card) await page.click('#wz-task [data-action="skip"]');
+    }
+    assert.match(await page.textContent("#wz-task"), /All fixed|Nothing to fix/, key);
+    assert.doesNotMatch(await rewrite(page), /___/, key);
+  }
+  assert.deepEqual(errors, []);
+  await context.close();
+});

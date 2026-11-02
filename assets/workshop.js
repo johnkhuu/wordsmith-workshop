@@ -52,6 +52,7 @@
   let flashPart = null;          // the part of the rewrite that just changed
   let exampleMethods = null;     // an example brings its own method
   let recsShown = [];
+  let cardSugs = [];             // the recommended edits on the card on screen
   let pointFrom = null;          // where the point sat in the draft, kept from the first pass
   let rewriteCuts = [];          // the stock phrases the first pass trimmed
 
@@ -337,9 +338,10 @@
     body += '<div class="wz-task-head"><h4>' + esc(cardTitle(card)) + "</h4>" +
       (method && method !== "audit" && method !== "polish" ? '<span class="slot-owner m-' + method + '">' + esc(W.METHOD_NAMES[method]) + "</span>" : "") + "</div>";
     const mixed = card.issues.some((i) => i.desk !== card.desk);
+    cardSugs = [];
     body += '<ul class="wz-issues">' + card.issues.map((i, k) =>
       '<li class="d-line-' + i.desk + '">' + (mixed ? '<p class="wz-issue-desk">' + esc(desk(i.desk).name) + "</p>" : "") + '<p class="wz-issue-title">' + esc(i.title) + (i.quotes && i.quotes.length ? ' <span class="ws-user">' + i.quotes.map((q) => "<q>" + esc(q) + "</q>").join(" ") + "</span>" : "") + "</p>" +
-      (i.detail ? '<p class="wz-issue-detail">' + esc(i.detail) + "</p>" : "") + fixLine(i, k) + "</li>").join("") + "</ul>";
+      (i.detail ? '<p class="wz-issue-detail">' + esc(i.detail) + "</p>" : "") + fixLine(i, k) + (i.fix ? "" : sugList(i, card)) + "</li>").join("") + "</ul>";
 
     if (card.field === "groups") {
       body += groupsEditor("wz");
@@ -352,7 +354,8 @@
       if (ex) body += '<p class="wz-eg" id="wz-example">For example: ' + esc(ex.replace(/\n/g, " / ")) + "</p>";
       if (empty) {
         const used = W.usedPieces(state, parsed);
-        const picks = parsed.pieces.filter((p) => !p.flags.filler && !used.has(p.id)).slice(0, 4);
+        const offered = new Set(cardSugs.map((x) => x.text));
+        const picks = parsed.pieces.filter((p) => !p.flags.filler && !used.has(p.id) && !offered.has(p.text)).slice(0, 4);
         if (picks.length) {
           body += '<p class="wz-small">Or start from one of your sentences:</p><ul class="wz-picks ws-user">' +
             picks.map((p) => '<li><button type="button" class="wz-pick" data-pick="' + p.id + '">' + esc(p.text) + "</button></li>").join("") + "</ul>";
@@ -372,6 +375,7 @@
       body += '<div class="wz-row"><button type="button" class="btn btn-primary" data-action="apply">' + primary + "</button>" +
         '<button type="button" class="btn btn-quiet" data-action="skip">Keep it as is</button></div>';
       if (autos && manual) body += '<p class="wz-small">' + esc(primary) + " makes the " + (autos === 1 ? "change it can" : "changes it can") + ". The note marked “Needs your words” is yours to edit above.</p>";
+      else if (manual && cardSugs.length) body += '<p class="wz-small">Pick a suggested edit, or write your own above and save. Or keep it as is if the note doesn’t fit.</p>';
       else if (manual) body += '<p class="wz-small">This one needs your words: edit the line, then save. Or keep it as is if the note doesn’t fit.</p>';
     }
     taskEl.innerHTML = body;
@@ -383,6 +387,83 @@
     const input = $("wz-input");
     if (input) { input.value = card.value || ""; grow(input); }
     if (card.field === "groups") fillGroupsEditor("wz");
+  }
+
+  // Recommended edits for a note that needs the writer's words. Each one is the
+  // whole line, rewritten, with the change marked. A blank, ___, is theirs to fill.
+  function sugList(issue, card) {
+    if (card.field === "general") return "";
+    const fresh = (issue.suggestions || []).filter((x) => !(x.kind === "line" && card.field === "groups") && !cardSugs.some((y) => y.kind === x.kind && y.text === x.text));
+    if (!fresh.length) return (issue.suggestions || []).length ? '<p class="wz-small wz-sug-same">An edit above covers this one too.</p>' : "";
+    const chips = fresh.filter((x) => x.kind === "rule");
+    const rows = fresh.filter((x) => x.kind !== "rule");
+    const chipRow = chips.map((x) => {
+      cardSugs.push(x);
+      return '<button type="button" class="btn btn-small wz-choice wz-sug-chip" data-sug="' + (cardSugs.length - 1) + '">' + esc(x.text) + "</button>";
+    }).join("");
+    const items = rows.map((x) => {
+      cardSugs.push(x);
+      const n = cardSugs.length - 1;
+      const shown = x.kind === "line" ? (x.text ? changed(String(card.value || ""), x.text) : '<span class="wz-sug-cut">Cut this line</span>') : esc(x.text);
+      return '<li><button type="button" class="wz-sug" data-sug="' + n + '">' +
+        (x.label ? '<span class="wz-sug-tag">' + esc(x.label) + "</span>" : "") +
+        '<span class="wz-sug-text ws-user">' + shown + "</span>" +
+        '<span class="wz-sug-go">' + (x.blank ? "Use it and fill in the blank" : "Use this edit") + "</span></button></li>";
+    }).join("");
+    return '<div class="wz-sugs"><p class="wz-sugs-label">' + (chips.length && !rows.length ? "Pick one" : "Try one of these") + "</p>" +
+      (chipRow ? '<div class="wz-choices" role="group" aria-label="Suggested rules">' + chipRow + "</div>" : "") +
+      (items ? '<ul class="wz-sug-list">' + items + "</ul>" : "") + "</div>";
+  }
+
+  // The new line with what changed marked, and any blank shown as a blank.
+  function changed(before, after) {
+    const a = before.split(/(\s+)/);
+    const b = after.split(/(\s+)/);
+    let start = 0;
+    while (start < a.length && start < b.length && a[start] === b[start]) start++;
+    let end = 0;
+    while (end < a.length - start && end < b.length - start && a[a.length - 1 - end] === b[b.length - 1 - end]) end++;
+    const blank = (t) => esc(t).replace(/(\$?)___/g, '<span class="wz-nowrap">$1<span class="wz-blank"><span class="sr-only">blank</span></span></span>');
+    const mid = b.slice(start, b.length - end).join("");
+    // Mark the change only when most of the line stays the same.
+    if (!before.trim() || !mid.trim() || mid.length > after.length * 0.6) return blank(after);
+    return blank(b.slice(0, start).join("")) + '<mark class="wz-sug-new">' + blank(mid) + "</mark>" + blank(b.slice(b.length - end).join(""));
+  }
+
+  // Use a recommended edit: apply it, or put it in the box with the blank selected.
+  function useSuggestion(button) {
+    const card = onScreen();
+    const pick = cardSugs[Number(button.dataset.sug)];
+    if (!card || !pick) return;
+    const input = $("wz-input");
+    if (pick.kind === "line" && pick.blank && input) {
+      input.value = pick.text;
+      grow(input);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      selectBlank(input);
+      const n = (pick.text.match(/___/g) || []).length;
+      note("info", n > 1 ? "Fill in the " + n + " blanks, then save. Save takes you to the next one." : "Fill in the blank, then save.");
+      return;
+    }
+    if (card.field === "groups") readGroupsEditor("wz");
+    state = W.applySuggestion(state, card, pick);
+    settle(card, 0, "Used the suggested edit", false);
+  }
+
+  function selectBlank(input) {
+    const at = input.value.indexOf("___");
+    input.focus({ preventScroll: true });
+    if (at >= 0) input.setSelectionRange(at, at + 3);
+    input.scrollIntoView({ block: "nearest", behavior: reduceMotion ? "auto" : "smooth" });
+  }
+
+  // A result note right above the buttons, without redrawing the card.
+  function note(kind, text) {
+    taskEl.querySelectorAll(".wz-result").forEach((n) => n.remove());
+    const apply = taskEl.querySelector('[data-action="apply"]');
+    const row = apply && apply.closest(".wz-row");
+    if (row) row.insertAdjacentHTML("beforebegin", '<div class="wz-result is-' + kind + '" role="status" data-where="actions" data-blank="1"><span class="wz-result-icon" aria-hidden="true"></span><p>' + esc(text) + "</p></div>");
+    say(text);
   }
 
   function fixLine(i, k) {
@@ -439,6 +520,12 @@
   function applyCard() {
     const card = onScreen();
     if (!card) { renderFix(); focusTask(); return; }
+    const input = $("wz-input");
+    if (input && input.value.includes("___")) {
+      selectBlank(input);
+      note("warn", "Fill in the blank (___) first, or pick another edit.");
+      return;
+    }
     const edited = currentText(card) !== taskEl.dataset.original;
     saveEdit(card);
     const live = W.tasks(state, parsed).find((c) => c.key === card.key);
@@ -450,7 +537,7 @@
     }
     if (!edited && !applied && live) {
       // Nothing to save and nothing the desk can fix on its own: say so, right here.
-      result = { kind: "info", where: "actions", text: "Nothing has changed yet. Edit the line above, or keep it as is if the note doesn't fit." };
+      result = { kind: "info", where: "actions", text: cardSugs.length ? "Nothing has changed yet. Pick a suggested edit, edit the line yourself, or keep it as is." : "Nothing has changed yet. Edit the line above, or keep it as is if the note doesn't fit." };
       say(result.text);
       renderFix();
       focusTask();
@@ -489,7 +576,7 @@
       fixed += 1;
       current = null;
       const left = openTasks().length;
-      result = { kind: "ok", text: did + " " + title + " is fixed. " + (left ? plural(left, "fix", "fixes") + " to go." : "That was the last one.") };
+      result = { kind: "ok", text: did + " " + title + (title === "Your groups" ? " are" : " is") + " fixed. " + (left ? plural(left, "fix", "fixes") + " to go." : "That was the last one.") };
       say(result.text);
       renderFix();
       focusTask();
@@ -498,6 +585,10 @@
 
   function skipCard() {
     if (!current) return;
+    const card = onScreen();
+    if (card && card.field !== "groups" && card.field !== "general" && String(W.fieldValue(state, card.field, card.index) || "").includes("___")) {
+      W.setField(state, card.field, card.index, taskEl.dataset.original || "");
+    }
     const title = cardTitle(W.tasks(state, parsed).find((c) => c.key === current) || { field: "general" });
     skipped.add(current);
     current = null;
@@ -517,6 +608,7 @@
     if (!b) return;
     if (b.dataset.action === "apply") applyCard();
     else if (b.dataset.choice !== undefined) chooseFix(b);
+    else if (b.dataset.sug !== undefined) useSuggestion(b);
     else if (b.dataset.action === "skip") skipCard();
     else if (b.dataset.action === "finish") finish();
     else if (b.dataset.pick) {
@@ -550,6 +642,8 @@
     if (e.target.id === "wz-input") {
       W.setField(state, card.field, card.index, e.target.value);
       grow(e.target);
+      // The blank is filled: the note asking for it has done its job.
+      if (!e.target.value.includes("___")) taskEl.querySelectorAll('.wz-result[data-blank]').forEach((n) => n.remove());
     } else if (card.field === "groups") {
       readGroupsEditor("wz");
       if (e.target.tagName === "TEXTAREA") grow(e.target);

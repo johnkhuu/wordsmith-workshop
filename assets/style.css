@@ -981,7 +981,7 @@ mark.ws-new { color: inherit; border-radius: 3px; background: var(--ok-tint); an
 .wz-task-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .wz-task-head h4 { font-family: var(--font-display); font-weight: 500; font-size: 1.4rem; }
 .wz-issues { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.wz-issues li { padding: 10px 12px; border-radius: 12px; background: var(--muted); border-left: 3px solid var(--desk, var(--accent)); }
+.wz-issues > li { padding: 10px 12px; border-radius: 12px; background: var(--muted); border-left: 3px solid var(--desk, var(--accent)); }
 .d-line-structure { --desk: var(--violet-ink); }
 .d-line-line { --desk: var(--accent); }
 .d-line-copy { --desk: var(--moderate); }
@@ -1009,6 +1009,35 @@ mark.ws-new { color: inherit; border-radius: 3px; background: var(--ok-tint); an
 .wz-issue-detail { color: var(--ink-soft); font-size: 0.92rem; line-height: 1.5; }
 .wz-input-label { font-weight: 600; margin-top: 4px; }
 .wz-eg { color: var(--ink-soft); font-size: 0.9rem; }
+.wz-sugs { margin-top: 10px; }
+.wz-sugs-label { font-size: 0.85rem; font-weight: 700; color: var(--ink); margin-bottom: 6px; }
+.wz-sug-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.wz-sug {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.wz-sug:hover { border-color: var(--violet-ink); box-shadow: var(--shadow-1); }
+.wz-sug:focus-visible { outline: 3px solid var(--violet-ink); outline-offset: 2px; }
+.wz-sug-tag { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--violet-ink); }
+.wz-sug-go { font-size: 0.82rem; font-weight: 600; color: var(--accent-ink); }
+.wz-sug-new { background: var(--hot-tint); color: var(--ink); padding: 0 0.15em; border-radius: 4px; }
+.wz-blank { display: inline-block; width: 2.6em; height: 1.05em; vertical-align: -0.12em; border-bottom: 2px dashed var(--accent); }
+.wz-sug-cut { font-style: italic; color: var(--ink-soft); }
+.wz-sug-same { margin-top: 6px; }
+.wz-nowrap { white-space: nowrap; }
+.wz-sugs .wz-choices { margin: 0 0 6px; }
 .wz-picks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .wz-pick { width: 100%; text-align: left; font: inherit; font-size: 0.95rem; padding: 8px 12px; border-radius: 12px; border: 1px dashed var(--line-strong); background: var(--muted); color: var(--ink); cursor: pointer; }
 .wz-pick:hover { border-color: var(--accent); border-style: solid; }

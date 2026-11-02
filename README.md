@@ -8,7 +8,7 @@ The workshop runs in four steps, one screen at a time:
 
 1. **Paste** a draft, or pick one of six examples.
 2. **Review** what's holding it back: the draft sentence by sentence, with the buried point, the filler and the tells flagged in plain words. Methods are picked from the skill's own recommendation rules, and the visitor can change them.
-3. **Fix**: the rewrite appears at once, followed by one card per line that still needs a change, with a progress bar.
+3. **Fix**: the rewrite appears at once, followed by one card per line that still needs a change, with a progress bar. Where a rule can make the change, **Apply fix** makes it. Where the note needs the writer's words, the card suggests edits built from the draft itself, like *Could we push the deck from the 14th to ___?* A click uses the edit. If it has a blank (a date or a number only the writer knows), the edit goes into the box with the blank selected, and the card won't save until the blank is filled.
 4. **Send**: the finished message to copy, a list of what changed, and the method guides' "ask yourself" questions.
 
 Every draft also gets an editorial desk, modeled on how a publishing house edits. Six desks each sign their notes:

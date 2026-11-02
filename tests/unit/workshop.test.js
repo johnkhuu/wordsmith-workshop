@@ -576,3 +576,134 @@ test("a word that starts a sentence isn't a name, so it can't pass the point or 
   const named = state({ point: "Could you ask Mark to push it back?" });
   assert.ok(W.check(named, null).some((c) => c.id === "minto-specific" && c.status === "pass"));
 });
+
+// ---------------------------------------------------------------------
+// Recommended edits for the notes that need the writer's words
+// ---------------------------------------------------------------------
+
+// The rewrite as the workshop shows it: the first pass with its trims made.
+function baked(key) {
+  const parsed = W.parseDraft(W.EXAMPLES[key].text);
+  return { parsed, st: W.bakeTrims(W.suggest(parsed, W.methodsFrom(W.EXAMPLES[key].methods))).state };
+}
+const sugsFor = (st, parsed, code) => {
+  const card = W.tasks(st, parsed).find((c) => c.issues.some((i) => i.code === code));
+  assert.ok(card, "no card carries " + code);
+  return { card, issue: card.issues.find((i) => i.code === code), texts: card.issues.find((i) => i.code === code).suggestions.map((x) => x.text) };
+};
+const lineSugs = (fields, code, methods) => sugsFor(state(fields, methods), null, code).texts;
+
+test("lemma and active voice turn the common passives around", () => {
+  assert.deepEqual(["charged", "looked", "stopped", "carried", "received", "paid", "sent"].map(W.lemma), ["charge", "look", "stop", "carry", "receive", "pay", "send"]);
+  assert.equal(W.activeVoice("I would appreciate it if this could be looked into."), "Could you look into this?");
+  assert.equal(W.activeVoice("We moved out on 9/30 and the deposit has not been returned."), "We moved out on 9/30 and you haven't returned the deposit.");
+  assert.equal(W.activeVoice("It appears the invoice may have been charged twice."), "It appears you may have charged the invoice twice.");
+  assert.equal(W.activeVoice("The package was delivered to the wrong house."), "You delivered the package to the wrong house.");
+  assert.equal(W.activeVoice("We had a great time."), null);
+});
+
+test("each example's open notes come with edits built from its own draft", () => {
+  const pyramid = baked("pyramid");
+  const point = sugsFor(pyramid.st, pyramid.parsed, "minto-specific").texts;
+  assert.ok(point.includes("Could we push the deck back?"), point.join(" | "));
+  assert.ok(point.includes("Could we push the deck from the 14th to ___?"), point.join(" | "));
+
+  const wwb = baked("wwb");
+  assert.ok(sugsFor(wwb.st, wwb.parsed, "minto-specific").texts.includes("Could you look into the invoice?"));
+  const passive = W.tasks(wwb.st, wwb.parsed).find((c) => c.field === "support").issues.find((i) => i.code === "W1");
+  assert.deepEqual(passive.suggestions.map((x) => x.text), ["Unfortunately, it appears you may have charged the invoice twice."]);
+
+  const data = baked("data");
+  const big = sugsFor(data.st, data.parsed, "data-big-idea").texts;
+  assert.ok(big.includes("The new phone plan saves us $___ a month: $___ instead of $___."), big.join(" | "));
+
+  const scqa = baked("scqa");
+  assert.ok(sugsFor(scqa.st, scqa.parsed, "scqa-situation").texts.includes("Thanksgiving is usually ___."));
+  assert.ok(sugsFor(scqa.st, scqa.parsed, "scqa-complication").texts.length >= 2);
+
+  const mece = baked("mece");
+  assert.equal(sugsFor(mece.st, mece.parsed, "mece-rule").texts[0], "Settled vs. still needed");
+  assert.ok(sugsFor(mece.st, mece.parsed, "minto-point").texts.includes("Five things to sort out before ___."));
+  assert.deepEqual(sugsFor(mece.st, mece.parsed, "mece-overlap").issue.suggestions.map((x) => x.kind), ["keep-item", "keep-item"]);
+});
+
+test("a blank marks the fact only the writer knows, and nothing else", () => {
+  const { st, parsed } = baked("pyramid");
+  const { issue } = sugsFor(st, parsed, "minto-specific");
+  assert.deepEqual(issue.suggestions.map((x) => x.blank), [false, true]);
+});
+
+test("copy and tone notes get a rewritten line", () => {
+  assert.deepEqual(lineSugs({ point: "Can you call me?", support: ["It's not about the money, it's about trust."] }, "C2"), ["It's about trust."]);
+  assert.deepEqual(lineSugs({ point: "Can you call me?", support: ["Experts say carriers lose parcels."] }, "B2"),
+    ["___ says carriers lose parcels.", "I think carriers lose parcels."]);
+  assert.deepEqual(lineSugs({ point: "Can you call me?", support: ["This is unacceptable and I demand a refund."] }, "T5"),
+    ["This is not what we agreed and I'd like a refund.", "This is a problem for us and I'm asking for a refund."]);
+  assert.deepEqual(lineSugs({ point: "Can you call me?", support: ["Not sure if you saw my last email."] }, "T6"), ["Following up on my last email."]);
+  assert.deepEqual(lineSugs({ point: "Can you call me?", support: ["I'm so sorry, sorry for the late reply."] }, "T3"), ["Sorry for the late reply."]);
+  assert.deepEqual(lineSugs({ point: "Can you call me?", support: ["I called the depot.", "I left a note.", "I sent an email."] }, "P5"),
+    ["Then I sent an email.", "After that, I sent an email."]);
+});
+
+test("every recommended edit clears its own note and adds no new tells", () => {
+  const drafts = Object.values(W.EXAMPLES).map((e) => [e.methods, e.text]).concat([
+    [["pyramid"], "Hi Dana, The package was delivered to the wrong house on Tuesday. It's not about the money, it's about trust. Experts say carriers lose a lot of parcels. I called the depot. I left a note. I sent an email. Could this be fixed by Friday? Thanks so much!"],
+    [["pyramid"], "Hey, I'm so sorry, sorry for the late reply. This is unacceptable and I demand a refund for the jacket. The jacket was returned on 2/30. Let me know what you think. Thanks."],
+    [["pyramid"], "Not sure if you saw my last email, but we still need the keys. The keys were supposed to be dropped off last week and that stands as a testament to how busy everyone is. Let me know if you have any questions."],
+    [["pyramid", "inverted"], "So I was thinking about the party and the venue and the food, and also we should probably think about the music and maybe the date, and it would be great to sort everything out soon."],
+    [["pyramid", "scqa"], "We need to decide on the vacation soon."],
+    [["pyramid", "mece"], "Here's the plan. Sam is bringing chips. Jo is bringing drinks. We still need someone to bring ice. We still need plates."],
+    [["pyramid", "data"], "Our water bill went up to $180 this month. That's a huge jump."],
+  ]);
+  let total = 0;
+  for (const [methods, text] of drafts) {
+    const parsed = W.parseDraft(text);
+    const st = W.bakeTrims(W.suggest(parsed, W.methodsFrom(methods))).state;
+    const tells = W.tellCount(W.assemble(st).text);
+    for (const card of W.tasks(st, parsed)) {
+      for (const issue of card.issues) {
+        for (const sug of issue.suggestions || []) {
+          total++;
+          const filled = sug.kind === "line" ? Object.assign({}, sug, { text: W.sampleFill(sug.text) }) : sug;
+          const out = W.applySuggestion(st, card, filled);
+          const still = W.tasks(out, parsed).find((c) => c.key === card.key);
+          const label = card.key + " " + issue.code + " → " + filled.text;
+          assert.ok(!still || !still.issues.some((i) => i.code === issue.code), "still flagged: " + label);
+          assert.ok(W.tellCount(W.assemble(out).text) <= tells, "new tells: " + label);
+          assert.doesNotMatch(W.assemble(out).text, /___/, label);
+        }
+      }
+    }
+  }
+  assert.ok(total >= 50, "only " + total + " edits checked");
+});
+
+test("structural edits split a point, sort the groups and keep one of two twins", () => {
+  const long = state({ point: "So I was thinking about the party and the venue and the food, and also we should probably think about the music and maybe the date, and it would be great to sort everything out soon." }, ["inverted"]);
+  const card = W.tasks(long, null).find((c) => c.field === "point");
+  const split = card.issues.find((i) => i.code === "inv-lede").suggestions[0];
+  assert.equal(split.kind, "split");
+  const after = W.applySuggestion(long, card, split);
+  assert.equal(after.point, "So I was thinking about the party and the venue and the food.");
+  assert.match(after.support[0], /^We should probably think about the music/);
+
+  const { st, parsed } = baked("mece");
+  const original = JSON.stringify(st);
+  const groups = W.tasks(st, parsed).find((c) => c.field === "groups");
+  const sorted = W.applySuggestion(st, groups, { kind: "rule", text: "Settled vs. still needed" });
+  assert.equal(sorted.rule, "Settled vs. still needed");
+  assert.deepEqual(sorted.groups.map((g) => g.label), ["Settled", "Still needed"]);
+  const keep = groups.issues.find((i) => i.code === "mece-overlap").suggestions[0];
+  const kept = W.applySuggestion(sorted, groups, keep);
+  const items = kept.groups.flatMap((g) => g.items.split("\n")).filter(Boolean);
+  assert.ok(items.includes(keep.text.slice(6, -1)) && !items.includes(keep.drop));
+  assert.equal(JSON.stringify(st), original, "the original state is untouched");
+});
+
+test("dates written two ways offer both styles, one click each", () => {
+  const t = "Could we move the move-in from 11/14 to November 21? The truck is booked for Nov 21st.";
+  const f = W.polish(t).find((x) => x.code === "K4");
+  assert.deepEqual(f.fix.choices.map((c) => c.label), ["Use November 14 style", "Use 11/21 style"]);
+  assert.equal(W.applyPairs(t, f.fix.choices[0].pairs), "Could we move the move-in from November 14 to November 21? The truck is booked for November 21.");
+  assert.equal(W.applyPairs(t, f.fix.choices[1].pairs), "Could we move the move-in from 11/14 to 11/21? The truck is booked for 11/21.");
+});

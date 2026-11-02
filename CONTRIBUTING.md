@@ -135,6 +135,7 @@ The workshop's rules live in `assets/workshop-core.js`, and each one comes from 
 - `recommend` picks methods for a draft, following section 3 of `references/methods.md`.
 - `polish` runs the desks' own passes (copy, line, copywriter, fact-checking) on any text. Each finding names its desk, and `deskReport` builds the sign-off board. Keep these to things a rule can decide reliably, and never flag a word just for being used often: the skill's guide treats repeating the right word as clarity.
 - `diagnose` writes the Review step's flags. `tasks` turns each failed check into a fix card tied to the line it's about, using the map of slots that `assemble` returns.
+- `recommendEdits` writes the suggested edits for each note that has no automatic fix, from the writer's own draft and the guides' examples, and `applySuggestion` applies one. Leave a blank (`___`) for any fact only the writer knows; never invent a number, a date or a name. One unit test applies every suggested edit on a set of drafts, with its blanks filled, and fails if the note it answers is still there or if a new tell appears.
 
 - `slotCopy` holds each slot's label, hint and example. A method that owns a slot changes its label: the point becomes the Answer under SCQA, the Lede under Inverted Pyramid and the Big Idea under Storytelling with Data.
 - `assemble` puts the slots in each method's order. The order follows the table in `references/methods.md`: Minto's skeleton first, then MECE's groups, then the opening and the order.
