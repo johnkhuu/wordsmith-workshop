@@ -216,10 +216,22 @@
     return Array.from(text.matchAll(rx));
   }
 
-  function lineOf(text, idx) {
-    let n = 1;
-    for (let i = 0; i < idx; i++) if (text.charCodeAt(i) === 10) n++;
-    return n;
+  // Returns a function giving the 1-based line number of a character offset.
+  // Newlines are indexed once per scan and binary-searched, so a long paste
+  // with thousands of findings doesn't rescan the text for every one.
+  function lineIndex(text) {
+    const newlines = [];
+    for (let i = text.indexOf("\n"); i !== -1; i = text.indexOf("\n", i + 1)) newlines.push(i);
+    return function lineOf(idx) {
+      let lo = 0;
+      let hi = newlines.length;
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if (newlines[mid] < idx) lo = mid + 1;
+        else hi = mid;
+      }
+      return lo + 1;
+    };
   }
 
   // Python counts characters by code point; JS strings count UTF-16 units.
@@ -317,6 +329,7 @@
     text = String(text || "").replace(/\r\n?/g, "\n");
     const findings = [];
     const totalWords = wordsIn(text).length;
+    const lineOf = lineIndex(text);
 
     for (const [code, fam, sev, label, src, fix] of PATTERNS) {
       const flags = (code === "D5" || code === "D5m") ? "m" : "im";
@@ -324,7 +337,7 @@
         const span = trimmedSpan(m);
         findings.push({
           code, family: fam, severity: sev, label,
-          line: lineOf(text, m.index), match: span.text,
+          line: lineOf(m.index), match: span.text,
           context: snippet(text, m.index, m.index + m[0].length), fix,
           start: span.start, end: span.end,
         });
@@ -361,7 +374,7 @@
       const span = trimmedSpan(m);
       findings.push({
         code: "C1", family: "Rhythm", severity: tripSev, label: "Rule of three",
-        line: lineOf(text, m.index), match: span.text,
+        line: lineOf(m.index), match: span.text,
         context: snippet(text, m.index, m.index + m[0].length),
         fix: "Count what's true. Two strong items beat three padded ones.",
         start: span.start, end: span.end,
@@ -375,7 +388,7 @@
       const start = m.index + m[0].length - m[1].length;
       findings.push({
         code: "C8", family: "Rhythm", severity: transSev, label: "Formulaic transition",
-        line: lineOf(text, m.index), match: m[1],
+        line: lineOf(m.index), match: m[1],
         context: snippet(text, m.index, m.index + m[0].length),
         fix: "Cut the transition word; the sentence usually stands on its own.",
         start, end: start + m[1].length,
@@ -392,7 +405,7 @@
         const span = trimmedSpan(d);
         findings.push({
           code: "C6", family: "Rhythm", severity: sev, label: "Em dash",
-          line: lineOf(text, d.index), match: span.text,
+          line: lineOf(d.index), match: span.text,
           context: snippet(text, d.index, d.index + d[0].length),
           fix: "Pick the punctuation that fits: comma, colon, parentheses, or a new sentence.",
           start: span.start, end: span.end,
@@ -419,7 +432,7 @@
         const span = trimmedSpan(m);
         findings.push({
           code: "D3", family: "Packaging", severity: "moderate", label: "Title Case heading",
-          line: lineOf(text, m.index), match: m[1].trim(),
+          line: lineOf(m.index), match: m[1].trim(),
           context: span.text, fix: "Use sentence case, or drop the heading.",
           start: span.start, end: span.end,
         });
@@ -431,7 +444,7 @@
       const span = trimmedSpan(m);
       findings.push({
         code: "D4", family: "Packaging", severity: "moderate", label: "Emoji as formatting",
-        line: lineOf(text, m.index), match: span.text,
+        line: lineOf(m.index), match: span.text,
         context: snippet(text, m.index, m.index + m[0].length), fix: "Remove it.",
         start: span.start, end: span.end,
       });
@@ -537,7 +550,7 @@
         const span = trimmedSpan(m);
         findings.push({
           code: "W1", family: "WWB", severity: "moderate", label: "Passive voice (candidate)",
-          line: lineOf(text, m.index), match: span.text,
+          line: lineOf(m.index), match: span.text,
           context: snippet(text, m.index, m.index + m[0].length),
           fix: "Ask who acts and make them the subject. Keep it only if the actor truly doesn't matter.",
           start: span.start, end: span.end,
@@ -549,7 +562,7 @@
       for (const m of weasels) {
         findings.push({
           code: "W2", family: "WWB", severity: wSev, label: "Weasel word",
-          line: lineOf(text, m.index), match: m[0],
+          line: lineOf(m.index), match: m[0],
           context: snippet(text, m.index, m.index + m[0].length),
           fix: "Replace with a number, a name, or a plain committed claim. Keep it if it's literally true and specific enough.",
           start: m.index, end: m.index + m[0].length,
@@ -559,7 +572,7 @@
         wwbCounts.intensifiers += 1;
         findings.push({
           code: "W3", family: "WWB", severity: "moderate", label: "Intensifier",
-          line: lineOf(text, m.index), match: m[0],
+          line: lineOf(m.index), match: m[0],
           context: snippet(text, m.index, m.index + m[0].length),
           fix: "Cut it, or replace it with the fact that justified it.",
           start: m.index, end: m.index + m[0].length,
@@ -569,7 +582,7 @@
         wwbCounts.jargon += 1;
         findings.push({
           code: "W4", family: "WWB", severity: "moderate", label: "Jargon / stock phrase",
-          line: lineOf(text, m.index), match: m[0],
+          line: lineOf(m.index), match: m[0],
           context: snippet(text, m.index, m.index + m[0].length),
           fix: "Say it the way you'd say it out loud to this person.",
           start: m.index, end: m.index + m[0].length,

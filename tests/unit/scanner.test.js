@@ -32,8 +32,17 @@ function withoutOffsets(result) {
   return copy;
 }
 
-const ALL_CODES = ("A1 A2 A3 A4 B1 B2 B3 B4 B5 C1 C2 C2x C2r C3 C5 C5p C6 C7 C8 " +
-  "D1 D2 D3 D4 D5 D5m D6 D6m D7 H1 R1 W1 W2 W3 W4 W5 X1").split(" ");
+// Every check code the scanner can emit, read from its source, so a newly
+// ported check is picked up automatically and must get a fixture.
+const SCANNER_SOURCE = fs.readFileSync(path.join(__dirname, "..", "..", "assets", "scanner.js"), "utf8");
+const ALL_CODES = Array.from(new Set([
+  ...Array.from(SCANNER_SOURCE.matchAll(/^\s*\["([A-Z][A-Za-z0-9]*)", "/gm), (m) => m[1]),
+  ...Array.from(SCANNER_SOURCE.matchAll(/\bcode: "([A-Z][A-Za-z0-9]*)"/g), (m) => m[1]),
+])).sort();
+
+test("the scanner's check list was read", () => {
+  assert.equal(ALL_CODES.length, 36, "found: " + ALL_CODES.join(" "));
+});
 
 test("fixtures exist", () => {
   assert.ok(fixtureNames.length >= 5, "expected at least five fixtures");
@@ -128,13 +137,22 @@ test("Windows line endings scan the same as Unix ones", () => {
   assert.deepEqual(scan(text.replace(/\n/g, "\r\n")), scan(text));
 });
 
-test("a long paste scans in well under a second", () => {
-  const big = read("sample-before.txt").repeat(60); // about 6,000 words
+test("a very long paste scans in well under a second", () => {
+  // Regression: line numbers used to rescan the text for every finding,
+  // which took about 5.7 seconds on 60,000 words.
+  const big = read("sample-before.txt").repeat(600); // about 60,000 words, 10,000+ findings
   const t0 = process.hrtime.bigint();
   const r = scan(big, { wwb: true });
   const ms = Number(process.hrtime.bigint() - t0) / 1e6;
-  assert.ok(r.words > 5000);
+  assert.ok(r.words > 50000);
+  assert.ok(r.findings.length > 10000);
   assert.ok(ms < 1000, `took ${ms.toFixed(0)} ms`);
+});
+
+test("line numbers count newlines before the hit", () => {
+  const text = "One line.\n\nI hope this helps.\nThird.\n";
+  const d6 = scan(text).findings.find((f) => f.code === "D6");
+  assert.equal(d6.line, 3);
 });
 
 test("the clean sample has no strong or moderate hits", () => {
