@@ -116,7 +116,7 @@ test("the flash still shows with reduced motion", async () => {
   const during = await bgOf();
   const tint = await page.evaluate(() => {
     const probe = document.createElement("div");
-    probe.style.background = "var(--pencil-tint)";
+    probe.style.background = "var(--hot-tint)";
     document.body.append(probe);
     const c = getComputedStyle(probe).backgroundColor;
     probe.remove();
