@@ -595,10 +595,21 @@ const lineSugs = (fields, code, methods) => sugsFor(state(fields, methods), null
 
 test("lemma and active voice turn the common passives around", () => {
   assert.deepEqual(["charged", "looked", "stopped", "carried", "received", "paid", "sent"].map(W.lemma), ["charge", "look", "stop", "carry", "receive", "pay", "send"]);
+  assert.deepEqual(["updated", "shared", "scheduled", "decided", "created", "called", "added", "visited", "opened", "canceled", "agreed", "handled"].map(W.lemma),
+    ["update", "share", "schedule", "decide", "create", "call", "add", "visit", "open", "cancel", "agree", "handle"]);
+  assert.equal(W.lemma("invoked"), null, "unsure, so no edit is built on a guess");
   assert.equal(W.activeVoice("I would appreciate it if this could be looked into."), "Could you look into this?");
-  assert.equal(W.activeVoice("We moved out on 9/30 and the deposit has not been returned."), "We moved out on 9/30 and you haven't returned the deposit.");
-  assert.equal(W.activeVoice("It appears the invoice may have been charged twice."), "It appears you may have charged the invoice twice.");
-  assert.equal(W.activeVoice("The package was delivered to the wrong house."), "You delivered the package to the wrong house.");
+  // A statement doesn't say who did it, so the doer is a blank, never a guessed "you".
+  assert.equal(W.activeVoice("We moved out on 9/30 and the deposit has not been returned."), "We moved out on 9/30 and ___ didn't return the deposit.");
+  assert.equal(W.activeVoice("It appears the invoice may have been charged twice."), "It appears ___ may have charged the invoice twice.");
+  assert.equal(W.activeVoice("The package was delivered to the wrong house."), "___ delivered the package to the wrong house.");
+  // When it does say, that's the subject.
+  assert.equal(W.activeVoice("The deposit was paid by me in full on 10/3."), "I paid the deposit in full on 10/3.");
+  assert.equal(W.activeVoice("The cabin was reserved by my sister on 9/2."), "My sister reserved the cabin on 9/2.");
+  // A particle moves only when it belongs to the verb.
+  assert.equal(W.activeVoice("Could the dog be walked at 5 on Friday?"), "Could you walk the dog at 5 on Friday?");
+  assert.equal(W.activeVoice("Can the payment be made after the 15th?"), "Could you make the payment after the 15th?");
+  assert.equal(W.activeVoice("Could the invoice be updated by Friday?"), "Could you update the invoice by Friday?");
   assert.equal(W.activeVoice("We had a great time."), null);
 });
 
@@ -611,7 +622,7 @@ test("each example's open notes come with edits built from its own draft", () =>
   const wwb = baked("wwb");
   assert.ok(sugsFor(wwb.st, wwb.parsed, "minto-specific").texts.includes("Could you look into the invoice?"));
   const passive = W.tasks(wwb.st, wwb.parsed).find((c) => c.field === "support").issues.find((i) => i.code === "W1");
-  assert.deepEqual(passive.suggestions.map((x) => x.text), ["Unfortunately, it appears you may have charged the invoice twice."]);
+  assert.deepEqual(passive.suggestions.map((x) => x.text), ["Unfortunately, it appears ___ may have charged the invoice twice."]);
 
   const data = baked("data");
   const big = sugsFor(data.st, data.parsed, "data-big-idea").texts;
@@ -706,4 +717,70 @@ test("dates written two ways offer both styles, one click each", () => {
   assert.deepEqual(f.fix.choices.map((c) => c.label), ["Use November 14 style", "Use 11/21 style"]);
   assert.equal(W.applyPairs(t, f.fix.choices[0].pairs), "Could we move the move-in from November 14 to November 21? The truck is booked for November 21.");
   assert.equal(W.applyPairs(t, f.fix.choices[1].pairs), "Could we move the move-in from 11/14 to 11/21? The truck is booked for 11/21.");
+});
+
+// Every case below came from an independent review of the suggested edits.
+// An edit must keep the sentence whole and never guess a fact.
+test("suggested edits keep the grammar whole", () => {
+  const sug = (text, code, methods) => lineSugs({ point: "Can you call me tonight?", support: [text] }, code, methods);
+  assert.deepEqual(sug("Would you serve as our officiant at the wedding on June 6?", "C3"), ["Would you be our officiant at the wedding on June 6?"]);
+  assert.deepEqual(sug("Could you act as a reference for me?", "C3"), ["Could you be a reference for me?"]);
+  assert.deepEqual(sug("I'm serving as treasurer this year.", "C3"), ["I'm treasurer this year."]);
+  assert.deepEqual(sug("I demand that you refund the deposit.", "T5"), ["I'd ask that you refund the deposit.", "I'm asking that you refund the deposit."]);
+  assert.deepEqual(sug("I demand to speak to a manager.", "T5"), ["I'd like to speak to a manager."]);
+  assert.deepEqual(sug("The delay is completely unacceptable.", "T5"), ["The delay is not what we agreed.", "The delay is a problem for us."]);
+  assert.deepEqual(sug("It is a testament to your meticulous knitting.", "C7"), ["It shows your careful knitting."]);
+  assert.deepEqual(sug("I'm not sure if you saw my text from Monday.", "T6"), ["Following up on my text from Monday."]);
+  assert.deepEqual(sug("Sorry, not sure if you saw my note about the gate.", "T6"), ["Sorry, following up on my note about the gate."]);
+  assert.deepEqual(sug("That's not a gift, that's a loan until 12/1.", "C2"), ["That's a loan until 12/1."]);
+  assert.deepEqual(sug("Honestly, it's not about the money, it's about trust.", "C2"), ["Honestly, it's about trust."]);
+  assert.deepEqual(sug("We got the keys on Monday, meaning we can move in on 12/1, ensuring the kids start school on time.", "B1"),
+    ["We got the keys on Monday, meaning we can move in on 12/1."]);
+  assert.deepEqual(sug("It has been a few weeks since we wrote.", "W2", ["wwb"]), ["It has been ___ weeks since we wrote."]);
+  const { parsed, st } = (() => { const p = W.parseDraft("Hi all, Dave is bringing the cooler. Dave is bringing ice. Dave is bringing chairs. Dave wants the big table. Can you confirm by Friday?"); return { parsed: p, st: W.bakeTrims(W.suggest(p, W.methodsFrom([]))).state }; })();
+  assert.deepEqual(sugsFor(st, parsed, "P5").texts, ["Then Dave is bringing chairs.", "After that, Dave is bringing chairs."], "names keep their capital");
+  // A list of things isn't split at a comma: there's no second clause.
+  assert.deepEqual(sug("Can someone bring the folding chairs from the garage, the big blue cooler from the basement, the extra plates from my mom, the speaker from the den and the cake from the bakery on Elm?", "P6"), []);
+});
+
+test("suggested edits never guess a fact: a date, an amount, a status or what 'it' means", () => {
+  const draftSugs = (text, methods, code) => {
+    const p = W.parseDraft(text);
+    return sugsFor(W.bakeTrims(W.suggest(p, W.methodsFrom(methods))).state, p, code).texts;
+  };
+  // Whole dates only, with the right word in front.
+  assert.deepEqual(draftSugs("We're getting married! The ceremony is May 23 at the lake, and the party starts at 6pm. We'd love for you to come.", ["inverted"], "inv-when"),
+    ["We're getting married on May 23!", "We're getting married on ___!"]);
+  // The date must belong to the thing being moved.
+  assert.deepEqual(draftSugs("Hi Sam, Would it be possible to push the closing back a week? The inspection found mold in the basement on 11/1.", ["wwb"], "minto-specific"),
+    ["Could we push the closing back a week?"]);
+  assert.deepEqual(draftSugs("Hi Dana, The baby shower is May 23 at our place. Could we push it back?", [], "minto-specific"),
+    ["Could we push the baby shower back?", "Could we push the baby shower from May 23 to ___?"]);
+  // "It" is the thing acted on, not the busiest noun; people are never "it".
+  assert.deepEqual(draftSugs("Hi, I returned the jacket to the store last week. The store said the refund takes five days. Can you check on it?", [], "minto-specific"),
+    ["Can you check on the jacket?", "Can you check on the jacket by ___?"]);
+  assert.ok(draftSugs("Hi, the landlord called about the lease. Is it okay if I sign it?", [], "minto-specific").every((t) => !/landlord/.test(t)));
+  // Amounts keep their comparison, and only money talk gets a dollar sign.
+  const amount = (t) => sugsFor(state({ point: t }, ["data"]), null, "data-vague-amount").texts;
+  assert.deepEqual(amount("The new plan is way cheaper than what we pay now."), ["The new plan is $___ cheaper than what we pay now.", "The new plan saves us $___ a month: $___ instead of $___."]);
+  assert.deepEqual(amount("The data cap is much higher on the new plan."), ["The data cap is ___ higher on the new plan."]);
+  assert.deepEqual(amount("The new routine saves a lot of time."), []);
+  // MECE: no status the items don't state, no label the rule doesn't support, no label used twice.
+  const move = W.parseDraft("For the move: we need to rent the truck. We need boxes. Someone should cancel the internet. We still need a sitter for Saturday.");
+  const moveSt = W.bakeTrims(W.suggest(move, W.methodsFrom(["mece"]))).state;
+  assert.deepEqual(sugsFor(moveSt, move, "mece-count").texts, []);
+  const labels = (rule, groups) => sugsFor(state({ point: "Here's the plan for Saturday.", rule, groups }, ["mece"]), null, "mece-labels").issue.suggestions;
+  assert.deepEqual(labels("By person", [{ label: "", items: "Ana is bringing chips\nAna is bringing salsa", mode: "auto" }, { label: "", items: "Plates\nIce", mode: "auto" }]).map((x) => x.text), ["Name them Ana"]);
+  assert.deepEqual(labels("Settled vs. still needed", [{ label: "Still needed", items: "We still need plates\nWe need ice", mode: "auto" }, { label: "", items: "Ana is bringing chips\nJo has the drinks", mode: "auto" }]).map((x) => x.text), ["Name them Settled"]);
+  // A day/month date isn't "fixed" into a different one.
+  assert.deepEqual(lineSugs({ point: "Can you call me tonight?", support: ["Can we meet on Friday 13/11 at the park?"] }, "F1"), []);
+});
+
+test("dates written two ways leave fractions, scores and ratios alone", () => {
+  for (const t of ["It needs 1/2 cup of sugar for the Dec 5 party.", "Dinner on Nov 14 was 10/10.", "We should meet 3/4 of the way, on Dec 5.", "Let's split the cabin 50/50 on March 3."]) {
+    assert.ok(!W.polish(t).some((f) => f.code === "K4"), t);
+  }
+  const t = "The lease starts 11/14/2026 and the movers come on Nov 12.";
+  const f = W.polish(t).find((x) => x.code === "K4");
+  assert.equal(W.applyPairs(t, f.fix.choices[0].pairs), "The lease starts November 14, 2026 and the movers come on November 12.");
 });

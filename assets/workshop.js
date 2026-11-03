@@ -437,9 +437,9 @@
     if (!card || !pick) return;
     const input = $("wz-input");
     if (pick.kind === "line" && pick.blank && input) {
+      // The line goes into the box only. The rewrite changes once the blank is filled.
       input.value = pick.text;
       grow(input);
-      input.dispatchEvent(new Event("input", { bubbles: true }));
       selectBlank(input);
       const n = (pick.text.match(/___/g) || []).length;
       note("info", n > 1 ? "Fill in the " + n + " blanks, then save. Save takes you to the next one." : "Fill in the blank, then save.");
@@ -463,6 +463,8 @@
     const apply = taskEl.querySelector('[data-action="apply"]');
     const row = apply && apply.closest(".wz-row");
     if (row) row.insertAdjacentHTML("beforebegin", '<div class="wz-result is-' + kind + '" role="status" data-where="actions" data-blank="1"><span class="wz-result-icon" aria-hidden="true"></span><p>' + esc(text) + "</p></div>");
+    const shown = taskEl.querySelector(".wz-result[data-blank]");
+    if (shown) shown.scrollIntoView({ block: "nearest", behavior: reduceMotion ? "auto" : "smooth" });
     say(text);
   }
 
@@ -503,11 +505,18 @@
     if (el) el.scrollIntoView({ block: top ? "start" : "nearest", behavior: reduceMotion ? "auto" : "smooth" });
   }
 
+  // Blanks a suggested edit added that the writer hasn't filled yet. The
+  // writer's own "___" (a sign-up line, say) doesn't count.
+  const blanks = (t) => (String(t || "").match(/___/g) || []).length;
+  function openBlanks(input) {
+    return input ? blanks(input.value) > blanks(taskEl.dataset.original) : false;
+  }
+
   function saveEdit(card) {
     if (card.field === "groups") readGroupsEditor("wz");
     else {
       const input = $("wz-input");
-      if (input) W.setField(state, card.field, card.index, input.value);
+      if (input && !openBlanks(input)) W.setField(state, card.field, card.index, input.value);
     }
   }
 
@@ -521,7 +530,7 @@
     const card = onScreen();
     if (!card) { renderFix(); focusTask(); return; }
     const input = $("wz-input");
-    if (input && input.value.includes("___")) {
+    if (openBlanks(input)) {
       selectBlank(input);
       note("warn", "Fill in the blank (___) first, or pick another edit.");
       return;
@@ -586,7 +595,7 @@
   function skipCard() {
     if (!current) return;
     const card = onScreen();
-    if (card && card.field !== "groups" && card.field !== "general" && String(W.fieldValue(state, card.field, card.index) || "").includes("___")) {
+    if (card && card.field !== "groups" && card.field !== "general" && blanks(W.fieldValue(state, card.field, card.index)) > blanks(taskEl.dataset.original)) {
       W.setField(state, card.field, card.index, taskEl.dataset.original || "");
     }
     const title = cardTitle(W.tasks(state, parsed).find((c) => c.key === current) || { field: "general" });
@@ -640,10 +649,11 @@
     const card = onScreen();
     if (!card) return;
     if (e.target.id === "wz-input") {
-      W.setField(state, card.field, card.index, e.target.value);
       grow(e.target);
+      if (openBlanks(e.target)) return;
+      W.setField(state, card.field, card.index, e.target.value);
       // The blank is filled: the note asking for it has done its job.
-      if (!e.target.value.includes("___")) taskEl.querySelectorAll('.wz-result[data-blank]').forEach((n) => n.remove());
+      taskEl.querySelectorAll('.wz-result[data-blank]').forEach((n) => n.remove());
     } else if (card.field === "groups") {
       readGroupsEditor("wz");
       if (e.target.tagName === "TEXTAREA") grow(e.target);

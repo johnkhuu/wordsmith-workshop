@@ -1406,6 +1406,8 @@
   const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
   const DAY_RX = "(sun|mon|tues|wednes|thurs|fri|satur)day";
   const MONTH_RX = "(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\.?";
+  // A slash date, not a fraction, a score or a ratio: "11/14" and "11/14/2026", never "1/2 cup", "3/4 of", "50/50" or "was 10/10".
+  const SLASH_DATE = /(?<![\d/])(?<!\b(?:was|is|it's|rated|scored|about|nearly|almost|a)\s)(1[0-2]|0?[1-9])\/(3[01]|[12]\d|0?[1-9])(?:\/(\d{4}|\d{2}))?(?![\d/])(?!\s*(?:cups?|of\b|tsp|tbsp|teaspoons?|tablespoons?|inch(?:es)?\b|miles?|lbs?|oz|%))/i;
 
   function weekdayOf(y, m, d) {
     const dt = new Date(Date.UTC(y, m - 1, d));
@@ -1555,15 +1557,15 @@
     const amountLike = (t) => t.replace(/\B(?=(\d{3})+(?!\d))/g, (x, y, i) => (/\./.test(t.slice(0, i)) ? "" : ","));
     styles([/\b\d{1,2}(?::\d{2})?\s?(?:am|pm)\b/g, /\b\d{1,2}(?::\d{2})?\s?(?:a\.m\.|p\.m\.)/g, /\b\d{1,2}(?::\d{2})?\s?(?:AM|PM)\b/g], "K2", "Times written two ways", timeLike);
     styles([/\$\d{1,3}(?:,\d{3})+(?:\.\d+)?\b/g, /\$\d{4,}(?:\.\d+)?\b/g], "K3", "Amounts written two ways", amountLike);
-    styles([/\b\d{1,2}\/\d{1,2}\b/g, new RegExp("\\b" + MONTH_RX + "\\s+\\d{1,2}(?:st|nd|rd|th)?\\b", "gi")], "K4", "Dates written two ways");
+    styles([new RegExp(SLASH_DATE.source, "g"), new RegExp("\\b" + MONTH_RX + "\\s+\\d{1,2}(?:st|nd|rd|th)?\\b", "gi")], "K4", "Dates written two ways");
     // Dates: let the writer pick the style, then match every date to it.
     const k4 = out.find((f) => f.code === "K4");
     if (k4) {
       const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-      const slash = /\b(\d{1,2})\/(\d{1,2})\b/g;
+      const slash = new RegExp(SLASH_DATE.source, "g");
       const named = new RegExp("\\b" + MONTH_RX + "\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b", "gi");
       const monthOf = (mo) => MONTHS.findIndex((name) => name.slice(0, 3).toLowerCase() === mo.slice(0, 3).toLowerCase());
-      const toNamed = (x, mo, d) => (MONTHS[+mo - 1] ? MONTHS[+mo - 1] + " " + +d : x);
+      const toNamed = (x, mo, d, y) => (MONTHS[+mo - 1] ? MONTHS[+mo - 1] + " " + +d + (y ? ", " + (y.length === 2 ? "20" + y : y) : "") : x);
       const toSlash = (x, mo, d) => (monthOf(mo) >= 0 ? monthOf(mo) + 1 + "/" + +d : x);
       const fullName = (x, mo, d) => (monthOf(mo) >= 0 ? MONTHS[monthOf(mo)] + " " + +d : x);
       const first = (re) => { re.lastIndex = 0; const x = re.exec(src); re.lastIndex = 0; return x; };
@@ -1571,7 +1573,7 @@
       const b = first(named);
       if (a && b) {
         k4.fix = { choices: [
-          { label: "Use " + toNamed(a[0], a[1], a[2]) + " style", pairs: [{ find: slash, replace: toNamed }, { find: named, replace: fullName }], scope: "all" },
+          { label: "Use " + toNamed(a[0], a[1], a[2], a[3]) + " style", pairs: [{ find: slash, replace: toNamed }, { find: named, replace: fullName }], scope: "all" },
           { label: "Use " + toSlash(b[0], b[1], b[2]) + " style", pairs: [{ find: named, replace: toSlash }], scope: "all" },
         ] };
       }
@@ -1779,42 +1781,91 @@
   // rule, regroup, labels, keep-item (MECE).
 
   const BLANK = "___";
+
+  // Verbs: participle to base form, and to past tense where they differ.
   const IRREGULAR = { done: "do", made: "make", sent: "send", paid: "pay", given: "give", taken: "take", seen: "see", told: "tell",
     found: "find", left: "leave", kept: "keep", held: "hold", brought: "bring", bought: "buy", known: "know", shown: "show",
     written: "write", broken: "break", chosen: "choose", driven: "drive", hidden: "hide", stolen: "steal", spoken: "speak",
-    sold: "sell", lost: "lose", won: "win", built: "build" };
+    sold: "sell", lost: "lose", won: "win", built: "build", put: "put", set: "set", cut: "cut", read: "read", spent: "spend",
+    lent: "lend", meant: "mean", heard: "hear", forgotten: "forget", gotten: "get", got: "get" };
+  const PAST = { done: "did", given: "gave", taken: "took", seen: "saw", known: "knew", written: "wrote", broken: "broke",
+    chosen: "chose", driven: "drove", hidden: "hid", stolen: "stole", spoken: "spoke", forgotten: "forgot", gotten: "got" };
+  // Base forms that end in a silent e, and ones that look as if they should but don't.
+  const E_VERBS = new Set(("update create share schedule reschedule decide receive use close change exchange charge arrange " +
+    "rearrange approve require provide include exclude conclude complete handle settle replace move remove note notice " +
+    "place price raise reduce release resolve save serve solve store argue assume believe cause compare continue damage " +
+    "delete describe estimate excuse finalize organize realize recognize hire invite involve judge locate relocate manage " +
+    "measure owe pause prepare pursue quote rate refuse rescue restore retire revise secure ensure insure assure state " +
+    "translate trade type waste date cite combine decline decorate dispute donate examine expire file fire guarantee " +
+    "ignore imagine increase decrease investigate love like merge name operate please purchase reserve size stage tape " +
+    "tune upgrade validate vote wipe advise confuse bake celebrate invoice hope shape unite excite declare desire " +
+    "promise issue value cure scrape smile glue tie dye prove remove dine.").replace(/\.$/, "").split(" "));
+  const NO_E_VERBS = new Set(("open deliver offer listen visit edit credit limit order answer bother cover consider remember " +
+    "wonder enter happen gather suffer render alter filter deposit exhibit inherit audit benefit budget target market " +
+    "cancel travel label model level signal total equal deposit develop envelop gallop gossip worship kidnap " +
+    "reason season lessen threaten fasten listen question mention ration").split(" "));
 
-  // "charged" -> "charge", "looked" -> "look", "stopped" -> "stop", "carried" -> "carry".
+  // "charged" -> "charge", "looked" -> "look", "stopped" -> "stop", "called" -> "call".
+  // Returns null when a rule can't be sure, so no edit is built on a guess.
   function lemma(word) {
-    const w = word.toLowerCase();
+    const w = String(word || "").toLowerCase();
     if (IRREGULAR[w]) return IRREGULAR[w];
     if (!/ed$/.test(w)) return w;
     if (/ied$/.test(w)) return w.slice(0, -3) + "y";
-    if (/([bdgklmnprt])\1ed$/.test(w)) return w.slice(0, -3);
+    if (/([lsdfz])\1ed$/.test(w)) return w.slice(0, -2);       // called, passed, added
+    if (/([bgkmnprt])\1ed$/.test(w)) return w.slice(0, -3);    // stopped, planned, committed
     const stem = w.slice(0, -2);
-    if (/[cgvz]$|[^aeiou]l$|(?:^|[^aeiou])[aeiou]s$|u$/.test(stem)) return stem + "e";
-    return stem;
+    if (E_VERBS.has(stem + "e")) return stem + "e";
+    if (E_VERBS.has(stem) || NO_E_VERBS.has(stem)) return stem;
+    if (/ee$/.test(w.slice(0, -1))) return w.slice(0, -1);      // agreed, freed
+    if (/[^n]g$|[cvz]$|u$|[^aeiou]l$|[aeiou]s$/.test(stem)) return stem + "e";
+    if (/[aeiou]{2}[^aeiou]$|[^aeiou]{2}$|[wxy]$|ng$/.test(stem)) return stem;  // looked, waited, helped, fixed, played
+    return null;
   }
 
   const THING_SKIP = new Set(["end", "way", "time", "week", "weekend", "month", "year", "day", "lot", "bit", "moment", "meantime",
-    "past", "future", "one", "other", "same", "rest", "first", "last", "next", "most", "best", "thing", "things"]);
+    "past", "future", "one", "other", "same", "rest", "first", "last", "next", "most", "best", "thing", "things", "idea", "point",
+    "chance", "question", "update", "news", "plan", "side", "part", "kind", "sort", "number", "place", "house", "home", "area",
+    "convenience", "earliest", "behalf", "attention", "regard", "regards", "information", "help", "support", "patience"]);
+  const PEOPLE = new Set(("mom dad mother father sister brother wife husband son daughter kids kid family parents in-laws " +
+    "landlord landlady neighbor neighbors contractor plumber electrician teacher teachers boss manager team store company " +
+    "bank office school doctor dentist friend friends cousin cousins aunt uncle grandma grandpa grandmother grandfather " +
+    "guests guest host owner agent seller buyer staff crew driver coach vet nanny sitter babysitter tenant tenants roommate").split(" "));
+  const VERBISH = new Set(("is are was were will would can could should may might must has have had did does said says told " +
+    "asked called came went got gets found needs wants looks seems made took sent left being been be just also still never " +
+    "always already really").split(" "));
+  const PRONOUN_AFTER = new Set(("back up over out off in on to for by again soon today tomorrow now later instead too with from at " +
+    "before after until when if and or but so please").split(" "));
+  const ADJ = new Set("new old big small little whole extra final main right wrong last next first other same".split(" "));
+  const ACTION_BEFORE = /\b(?:start|starting|started|push|pushing|move|moving|moved|book|booked|booking|schedule|scheduled|plan|planning|cancel|cancell?ed|deliver|delivered|fix|fixed|fixing|check|checking|sign|signed|pay|paid|return|returned|refund|send|sent|order|ordered|buy|bought|rent|rented|reserve|reserved|finish|finished|build|building|about|for|on|with)\s+$/i;
 
-  // The thing the message is about, in the writer's words: "the deck", "the invoice".
+  // The thing the message is about, in the writer's words: "the deck", "the baby shower".
+  // Null when two things are equally likely: a blank beats a wrong guess.
   function salientThing(parsed, avoid) {
-    const counts = new Map();
+    const scores = new Map();
     const src = (parsed ? parsed.pieces : []).map((x) => x.text).join(" ");
-    const re = /\b(the|our|my|your)\s+([a-z][a-z-]{2,})\b/gi;
+    const re = /\b(the|our|my|your)\s+([a-z][a-z-]{2,})(?:\s+([a-z][a-z-]{2,}))?/gi;
     let m;
     while ((m = re.exec(src))) {
-      const noun = m[2].toLowerCase();
-      if (THING_SKIP.has(noun) || STOP.has(noun) || /ing$/.test(noun)) continue;
-      const phrase = m[1].toLowerCase() + " " + noun;
-      if (avoid && new RegExp("\\b" + noun + "\\b", "i").test(avoid)) continue;
-      counts.set(phrase, (counts.get(phrase) || 0) + 1);
+      let words = [m[2].toLowerCase()];
+      const next = m[3] && m[3].toLowerCase();
+      const nounNext = next && !STOP.has(next) && !VERBISH.has(next) && !THING_SKIP.has(next) && !/(?:ed|ly|ing)$/.test(next);
+      if (ADJ.has(words[0])) { if (!nounNext) continue; words.push(next); }
+      else if (nounNext && !PEOPLE.has(next)) words.push(next);
+      const head = words[words.length - 1];
+      if (THING_SKIP.has(head) || STOP.has(head) || /ing$/.test(head) || PEOPLE.has(head) || PEOPLE.has(words[0])) {
+        re.lastIndex = m.index + m[1].length + 1;
+        continue;
+      }
+      if (avoid && new RegExp("\\b" + reEsc(head) + "\\b", "i").test(avoid)) continue;
+      const phrase = m[1].toLowerCase() + " " + words.join(" ");
+      const score = 1 + (ACTION_BEFORE.test(src.slice(0, m.index)) ? 2 : 0);
+      scores.set(phrase, (scores.get(phrase) || 0) + score);
+      if (words.length === 1 && m[3]) re.lastIndex = m.index + m[0].length - m[3].length;
     }
-    let best = null;
-    for (const [k, v] of counts) if (!best || v > counts.get(best)) best = k;
-    return best;
+    const ranked = Array.from(scores.entries()).sort((p, q) => q[1] - p[1]);
+    if (!ranked.length || (ranked[1] && ranked[1][1] === ranked[0][1])) return null;
+    return ranked[0][0];
   }
 
   // A capitalized topic in the point ("Thanksgiving"), or the salient thing.
@@ -1825,10 +1876,14 @@
     return t ? t.charAt(0).toUpperCase() + t.slice(1) : null;
   }
 
+  // Whole dates only: "May 23", "11/14", "the 14th", "Friday". Never a bare month or a time.
+  const WEEKDAY_RX = "(?:mon|tues|wednes|thurs|fri|satur|sun)day";
+  const FULL_DATE = new RegExp("\\b(?:" + WEEKDAY_RX + ",?\\s+)?(?:" + MONTH_RX + "\\s+\\d{1,2}(?:st|nd|rd|th)?\\b|(?<![\\d/])(?:1[0-2]|0?[1-9])\\/(?:3[01]|[12]\\d|0?[1-9])(?:\\/\\d{2,4})?(?![\\d/])|the\\s+\\d{1,2}(?:st|nd|rd|th)\\b)|\\b" + WEEKDAY_RX + "\\b|\\b(?:tomorrow|tonight|this weekend|next week|next month)\\b", "gi");
+  const HAS_DATE = new RegExp(FULL_DATE.source, "i");
   function datesIn(text) {
-    const re = new RegExp("(?:\\bthe\\s+)?(?:" + RX.date.source + ")", "gi");
-    return Array.from(new Set((String(text || "").match(re) || []).map((d) => d.trim())));
+    return Array.from(new Set((String(text || "").match(FULL_DATE) || []).map((d) => d.trim())));
   }
+  const withOn = (d) => (/^(?:tomorrow|tonight|this weekend|next week|next month)$/i.test(d) ? d : "on " + d);
 
   // Inserts text just before the line's closing punctuation.
   function beforeEnd(line, add) {
@@ -1838,13 +1893,14 @@
 
   const reEsc = (x) => String(x).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const VAGUE_TIME = /\b(?:sometime soon|soon|at some point|shortly|in the near future|at your earliest convenience|when you get a chance|whenever you can)\b/i;
+  const blankCount = (t) => (String(t || "").match(/___/g) || []).length;
 
-  // Splits a long line where the second idea starts, nearest the middle.
+  // Splits a long line where a second clause with its own subject starts, nearest the middle.
   function looseSplit(text) {
     const t = String(text || "").trim();
     const parts = splitClauses(t);
     if (parts.length > 1) return parts;
-    const re = /,\s+(?:and\s+|but\s+|so\s+)?(?:also\s+|then\s+)?(?=(?:we|i|you|they|he|she|it|my|our|the|this|that|there)\b)/gi;
+    const re = /,\s+(?:and\s+|but\s+|so\s+)?(?:also\s+|then\s+)?(?=(?:we|i|you|they|he|she|it|there)\s+[a-z’']+)/gi;
     let best = null;
     let m;
     while ((m = re.exec(t))) {
@@ -1857,54 +1913,121 @@
     return best ? [finish(best.left), sentenceCase(best.right)] : [t];
   }
 
-  // Passive to active, for the two shapes personal writing uses most.
+  // Phrasal verbs whose particle moves with the verb: "looked into" -> "look into this".
+  const PHRASAL = { look: ["into", "at", "over"], go: ["over"], deal: ["with"], sort: ["out"], check: ["on", "out"], pick: ["up"],
+    fill: ["out", "in"], clean: ["up"], set: ["up"], figure: ["out"], follow: ["up on"], take: ["care of"] };
+  const OBJECT_TO_SUBJECT = { me: "I", us: "we", him: "he", her: "she", them: "they", you: "you" };
+  const DEADLINE = /^(?:the end|then|now|noon|tonight|tomorrow|next|this|\d|(?:mon|tues|wednes|thurs|fri|satur|sun)day|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i;
+
+  // "by my sister" after a passive names who did it; "by Friday" is a deadline.
+  function agentAfter(text) {
+    const m = /^\s+by\s+((?:me|us|him|her|them|you)\b|(?:my|our|his|her|their|your|the)\s+[a-z-]+|[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/.exec(text);
+    if (!m || DEADLINE.test(m[1])) return null;
+    const who = OBJECT_TO_SUBJECT[m[1].toLowerCase()] || m[1];
+    return { who, rest: text.slice(m[0].length) };
+  }
+
+  // Passive to active, for the two shapes personal writing uses most. When the
+  // draft doesn't say who did it, the doer is a blank for the writer to fill.
   function activeVoice(line) {
-    const a = /\b(?:I would (?:really )?appreciate it if|I'?d appreciate it if|could|can|would)\s+(this|it|that|the [a-z]+(?: (?!could|can|would|may|might|has|have|was|were|is|are)[a-z]+)?)\s+(?:could |can |would )?(?:possibly )?be\s+(\w+)(\s+(?:into|at|over|after))?\b([^.?!]*)[.?!]?/i.exec(line);
-    if (a && /ed$|^(?:done|made|sent|paid|fixed)$/i.test(a[2])) {
-      const ask = "Could you " + lemma(a[2]) + (a[3] || "") + " " + a[1].toLowerCase() + (a[4] || "") + "?";
-      return (line.slice(0, a.index) + ask + line.slice(a.index + a[0].length)).replace(/^\s+/, "").replace(/^[a-z]/, (c) => c.toUpperCase());
+    // A request: "Could this be looked into?" -> "Could you look into this?"
+    const a = /\b(?:I would (?:really )?appreciate it if|I'?d appreciate it if|could|can|would)\s+(this|it|that|the [a-z]+(?: (?!could|can|would|may|might|has|have|was|were|is|are|be)[a-z]+)?)\s+(?:could |can |would )?(?:possibly )?be\s+(\w+)\b([^.?!]*)[.?!]?/i.exec(line);
+    if (a && /ed$|^(?:done|made|sent|paid|given|taken|seen|shown|found)$/i.test(a[2])) {
+      const base = lemma(a[2]);
+      if (!base) return null;
+      let rest = a[3] || "";
+      if (agentAfter(rest)) return null;   // someone else is to do it, not the reader
+      let particle = "";
+      const p = /^\s+(up on|care of|into|at|over|with|out|on|up|in)\b/i.exec(rest);
+      if (p && (PHRASAL[base] || []).includes(p[1].toLowerCase())) { particle = " " + p[1].toLowerCase(); rest = rest.slice(p[0].length); }
+      const ask = "Could you " + base + particle + " " + a[1].toLowerCase() + rest + "?";
+      return capFirst((line.slice(0, a.index) + ask + line.slice(a.index + a[0].length)).replace(/^\s+/, ""));
     }
-    const b = /\b(the|my|our|your)\s+([a-z]+(?: (?!may|might|has|have|was|were)[a-z]+)?)\s+(may have been|might have been|has not been|hasn't been|have not been|haven't been|has been|have been|was not|wasn't|were not|weren't|was|were)\s+(\w+)\b/i.exec(line);
-    if (b && /ed$|^(?:done|made|sent|paid|returned|charged)$/i.test(b[4])) {
+    // A statement: "the deposit has not been returned" -> "___ didn't return the deposit".
+    const b = /\b(the|my|our|your)\s+([a-z]+(?: (?!may|might|has|have|was|were|is|are)[a-z]+)?)\s+(may have been|might have been|has not been|hasn't been|have not been|haven't been|has been|have been|was not|wasn't|were not|weren't|was|were)\s+(\w+)\b/i.exec(line);
+    if (b && /ed$|^(?:done|made|sent|paid|given|taken|seen|shown|found)$/i.test(b[4])) {
       const aux = b[3].toLowerCase();
       const v = b[4].toLowerCase();
       const obj = b[1].toLowerCase() + " " + b[2];
-      const active = /^(may|might) have been$/.test(aux) ? "you " + aux.split(" ")[0] + " have " + v + " " + obj
-        : /^(has|have)( not|n't) been$|^(hasn't|haven't) been$/.test(aux) ? "you haven't " + v + " " + obj
-        : /^(has|have) been$/.test(aux) ? "you have " + v + " " + obj
-        : /^(was|were)( not|n't)$|^(wasn't|weren't)$/.test(aux) ? "you didn't " + lemma(v) + " " + obj
-        : "you " + v + " " + obj;
-      const out = line.slice(0, b.index) + active + line.slice(b.index + b[0].length);
-      return b.index === 0 ? out.charAt(0).toUpperCase() + out.slice(1) : out;
+      let after = line.slice(b.index + b[0].length);
+      const agent = agentAfter(after);
+      if (agent) after = agent.rest;
+      const who = agent ? agent.who : BLANK;
+      const third = agent && !/^(?:I|we|you|they)$/i.test(who);
+      const negative = /not|n't/.test(aux);
+      let verb;
+      if (/^(?:may|might) have been$/.test(aux)) verb = aux.split(" ")[0] + " have " + v;
+      else if (agent && /^(?:has|have)/.test(aux)) verb = (third ? "has" : "have") + (negative ? "n't " : " ") + v;
+      else if (negative) { const base = lemma(v); if (!base) return null; verb = "didn't " + base; }
+      else verb = PAST[v] || v;
+      const before = line.slice(0, b.index);
+      const atStart = !before.trim() || /[.!?]\s*$/.test(before);
+      const subject = atStart && who !== BLANK ? capFirst(who) : who;
+      return before + subject + " " + verb + " " + obj + after;
     }
     return null;
   }
 
-  const VOCAB_SWAP = { testament: "", vibrant: "lively", delve: "look", delves: "looks", leverage: "use", navigate: "handle", robust: "strong",
-    seamless: "smooth", seamlessly: "smoothly", pivotal: "key", foster: "build", showcase: "show", tapestry: "", nestled: "set",
+  // Swaps a word and fixes the "a" or "an" in front of it.
+  function swapWord(text, word, to) {
+    const re = new RegExp("(\\b(?:a|an)\\s+)?\\b" + reEsc(word) + "\\b", "i");
+    return text.replace(re, (all, art) => {
+      const rep = matchCase(all.slice(art ? art.length : 0), to);
+      if (!art) return rep;
+      const an = /^[aeiou]/i.test(to) && !/^(?:uni|use|one|eu)/i.test(to);
+      const cap = /^A/.test(art);
+      return (an ? (cap ? "An" : "an") : (cap ? "A" : "a")) + " " + rep;
+    });
+  }
+
+  const VOCAB_SWAP = { vibrant: "lively", delve: "look", delves: "looks", leverage: "use", navigate: "handle", robust: "strong",
+    seamless: "smooth", seamlessly: "smoothly", pivotal: "key", foster: "build", showcase: "show", nestled: "set",
     breathtaking: "beautiful", boasts: "has", meticulous: "careful", meticulously: "carefully", embark: "start", realm: "area",
-    landscape: "scene", underscore: "show", underscores: "shows", highlighting: "", crucial: "important", enhance: "improve" };
+    landscape: "scene", underscore: "show", underscores: "shows", crucial: "important", enhance: "improve" };
   const PUFF_SWAP = [[/\bstands? as a testament to\b/i, "shows"], [/\bis a testament to\b/i, "shows"], [/\bplays? a (?:vital|crucial|key|pivotal) role in\b/i, "helps"],
-    [/\bmarks? a pivotal moment\b/i, "matters"], [/\bleaves? a lasting (?:impact|legacy)\b/i, "stays with people"]];
-  const HARSH_SWAP = { unacceptable: ["not what we agreed", "a problem for us"], ridiculous: ["more than I expected", "hard to understand"],
-    "i demand": ["I'd like", "I'm asking for"], "i shouldn't have to": ["I'd rather not have to", "I'd rather not have to"],
-    "i shouldnt have to": ["I'd rather not have to", "I'd rather not have to"] };
-  const COPULA_SWAP = [[/\b(?:serves|stands|functions|acts|operates) as\b/i, "is"], [/\b(?:serve|stand|function|act|operate) as\b/i, "are"],
-    [/\b(?:served|stood|serving as|acted as)\b(?: as)?/i, "was"], [/\bboasts\b/i, "has"], [/\bboast\b/i, "have"], [/\bboasted\b/i, "had"],
-    [/\brepresents\b/i, "is"], [/\brefers to\b/i, "means"]];
+    [/\bmarks? a pivotal moment\b/i, "matters"], [/\bleaves? a lasting (?:impact|legacy)\b/i, "stays with people"], [/\b(?:a )?rich tapestry of\b/i, "a mix of"],
+    [/\btapestry of\b/i, "mix of"]];
   const STIFF_SWAP = [[/\butiliz(?:e|ation)\b/i, "use"], [/\butilizes\b/i, "uses"], [/\butilized\b/i, "used"], [/\butilizing\b/i, "using"],
-    [/\bcommences?\b/i, "starts"], [/\bcommence\b/i, "start"], [/\bcommenced\b/i, "started"], [/\bcommencing\b/i, "starting"],
+    [/\bcommences\b/i, "starts"], [/\bcommence\b/i, "start"], [/\bcommenced\b/i, "started"], [/\bcommencing\b/i, "starting"],
     [/\bfacilitates\b/i, "helps"], [/\bfacilitate\b/i, "help"], [/\bfacilitated\b/i, "helped"], [/\bfacilitating\b/i, "helping"],
     [/\bendeavou?red\b/i, "tried"], [/\bendeavou?rs?\b/i, "try"], [/\bprior to\b/i, "before"], [/\brelocated\b/i, "moved"],
     [/\brelocating\b/i, "moving"], [/\brelocate\b/i, "move"], [/\bauthored\b/i, "wrote"], [/\bin regards? to\b/i, "about"]];
+  // Money talk. "Saves" alone isn't: a routine can save time.
+  const MONEYISH = /\$|\b(?:cheaper|pricier|expensive|savings|cost|costs|price|prices|budget|bill|bills|pay|paying|paid|spend|spent|fee|fees|rent|money|dollars|bucks|charge|charged|refund|deposit|invoice)\b|\bsav(?:e|es|ing)\s+(?:us\s+|you\s+|me\s+)?(?:\$|money|cash|a (?:bundle|fortune))/i;
+  const COMPARATIVE = "(?:cheaper|more|less|higher|lower|bigger|smaller|faster|slower|better|worse|longer|shorter|pricier)";
+  const EVENT = /\b(?:meet|meeting|visit|start|starts|move|moving|arrive|arrives|come|coming|party|dinner|lunch|call|open|opens|close|closes|due|ship|ships|leave|leaving|pick up|drop off|deliver|install|appointment|game|trip|flight|wedding|shower|ceremony|reunion|recital|practice|class)\b/i;
+
+  // Swaps vague amounts for blanks, keeping the comparison: "way cheaper" -> "$___ cheaper".
+  // Null when no swap is safe ("a lot of time" has no unit to suggest).
+  function vagueSwap(line) {
+    const money = MONEYISH.test(line);
+    const unit = money ? "$" + BLANK : BLANK;
+    let s = line;
+    if (money) s = s.replace(/\b(?:a lot|lots|tons|a bunch|a fortune) of (?:money|cash)\b/gi, unit);
+    s = s.replace(new RegExp(VAGUE_AMOUNT.source, "gi"), (v, ...rest) => {
+      const offset = rest[rest.length - 2];
+      const after = rest[rest.length - 1].slice(offset + v.length);
+      const comp = new RegExp("^(?:way|much)\\s+(" + COMPARATIVE + ")$", "i").exec(v);
+      if (comp) return unit + " " + comp[1];
+      if (/^(?:a lot|lots|tons|a bunch|significantly|substantially|considerably)$/i.test(v)) {
+        return new RegExp("^\\s+" + COMPARATIVE + "\\b", "i").test(after) ? unit : v;
+      }
+      if (/^a fortune$/i.test(v)) return money ? unit : v;
+      if (/^\s+(?:amount|sum)\b/i.test(after)) return money ? "\u0000" : v;
+      if (/^(?:significant|substantial|considerable|huge|massive)$/i.test(v)) return unit;
+      return v;
+    });
+    s = s.replace(/\b(?:a|an)\s+\u0000\s+(?:amount|sum)(?:\s+of\s+money)?/gi, "$" + BLANK).replace(/\u0000\s+(?:amount|sum)/g, "$" + BLANK);
+    return s === line ? null : s;
+  }
 
   function recommendEdits(issue, card, st, parsed) {
     const out = [];
     const line = String(card.value || "");
     const add = (sug) => { if (sug && !out.some((x) => x.text === sug.text && x.kind === sug.kind)) out.push(sug); };
     const lineSug = (text, label) => (text && text.trim() && text.trim() !== line.trim() ? add({ kind: "line", text: text.trim(), label: label || null }) : null);
-    const blanks = (t) => t && t.includes(BLANK);
     const code = issue.code || "";
+    const quote = (issue.quotes || [])[0] || "";
     const draftText = parsed ? parsed.pieces.map((x) => x.text).join(" ") : "";
     let unusedList = null;
     const unusedPieces = () => {
@@ -1915,48 +2038,55 @@
       return unusedList;
     };
 
-    // Name the thing the vague word stands for, then ask directly.
-    const sharpen = () => {
-      const thing = salientThing(parsed, line);
-      const vague = Array.from(line.matchAll(/\b(it|this|that|things|stuff|everything|something)\b/gi))
-        .filter((m) => !/^(would|is|was|will)\s+$/i.test(line.slice(Math.max(0, m.index - 6), m.index)) || m.index > 12)
-        .filter((m) => !/^(?:it|that)$/i.test(m[0]) || !/^\s+(?:appears|seems|looks|is|was|would|could|be)\b/i.test(line.slice(m.index + m[0].length)) || /\bif\s+$|\bto\s+\w+\s+$/i.test(line.slice(0, m.index)));
+    // Name the thing a vague word stands for, then ask directly.
+    const sharpen = (text) => {
+      const thing = salientThing(parsed, text);
+      // A pronoun, not a determiner: "push it back", "if this could be", never "that thing" or "it would be great".
+      const pronoun = (m) => {
+        const w = m[0].toLowerCase();
+        if (/^(?:things|stuff|everything|something)$/.test(w)) return true;
+        const next = ((text.slice(m.index + m[0].length).match(/^\s*([A-Za-z’']+|[.,!?;:]|$)/) || [])[1] || "").toLowerCase();
+        if (!next || /^[.,!?;:]$/.test(next) || PRONOUN_AFTER.has(next)) return true;
+        if (!VERBISH.has(next)) return false;
+        return w !== "it" || /\b(?:if|when|once|until|because|and)\s+$/i.test(text.slice(0, m.index));
+      };
+      const vague = Array.from(text.matchAll(/\b(it|this|that|things|stuff|everything|something)\b/gi))
+        .filter(pronoun)
+        .filter((m) => !/\b(?:is|was|would|will)\s+$/i.test(text.slice(0, m.index)) || m.index > 12);
       const target = vague[vague.length - 1];
-      let named = line;
-      if (thing && target) named = line.slice(0, target.index) + thing + line.slice(target.index + target[0].length);
+      let named = text;
+      if (thing && target && !/^(?:things|stuff|everything|something)$/i.test(target[0])) named = text.slice(0, target.index) + thing + text.slice(target.index + target[0].length);
       let direct = named
         .replace(/^(?:would|is) it be possible (?:for (?:us|me) )?to\s+/i, "Could we ")
         .replace(/^(?:would|is) it be possible for you to\s+/i, "Could you ")
         .replace(/^i was wondering if (you|we) could\s+/i, (x, who) => "Could " + who.toLowerCase() + " ");
       direct = activeVoice(direct) || direct;
-      return { named, direct };
+      return { thing, target, named, direct };
     };
 
     switch (code) {
       case "minto-specific": {
-        // Name the thing, ask directly, and add the date if the draft has one.
-        const { named, direct } = sharpen();
+        // Name the thing, ask directly, and add the date if the draft ties one to the thing.
+        const { thing, target, named, direct } = sharpen(line);
         if (named !== line) lineSug(named);
-        else {
-          const vague = line.match(/\b(?:things|stuff|everything|something)\b/i);
-          if (vague) lineSug(line.replace(vague[0], BLANK), "Say what you mean");
-        }
-        if (VAGUE_TIME.test(direct)) lineSug(direct.replace(VAGUE_TIME, "by " + BLANK), "Name the day");
+        else if (target) lineSug(line.slice(0, target.index) + BLANK + line.slice(target.index + target[0].length), "Say what you mean");
         if (direct !== named) lineSug(direct);
-        const dates = datesIn(draftText).filter((d) => !line.includes(d));
         const base = direct !== line ? direct : named;
-        if (dates.length && /\b(move|push|reschedule|change|shift|delay)\b/i.test(base)) lineSug(beforeEnd(base.replace(/\s+back\b/i, ""), " from " + dates[0] + " to " + BLANK));
-        else if (/\?\s*$/.test(base)) lineSug(beforeEnd(base, " by " + BLANK));
+        if (VAGUE_TIME.test(base)) { lineSug(base.replace(VAGUE_TIME, "by " + BLANK), "Name the day"); break; }
+        const head = thing ? thing.split(" ").pop() : null;
+        const nearDates = head && parsed ? datesIn(parsed.pieces.filter((x) => new RegExp("\\b" + reEsc(head) + "\\b", "i").test(x.text)).map((x) => x.text).join(" ")).filter((d) => !line.includes(d)) : [];
+        const reschedule = /\b(?:move|push|reschedule|change|shift|delay)\b/i.test(base) && !/\bback\s+(?:a|an|one|two|three|four|a few|a couple|by)\b/i.test(base);
+        if (reschedule && nearDates.length) lineSug(beforeEnd(base.replace(/\s+back\b/i, ""), " from " + nearDates[0] + " to " + BLANK), "Add the dates");
+        else if (/\?\s*$/.test(base) && !/\bback\s+(?:a|an|one|two|three|four|a few|a couple)\b/i.test(base)) lineSug(beforeEnd(base, " by " + BLANK), "Add the date");
         break;
       }
       case "W1": {
-        const { named } = sharpen();
+        const { named } = sharpen(line);
         lineSug(activeVoice(named) || activeVoice(line), "Say who did it");
         break;
       }
       case "W2": {
-        const q = (issue.quotes || [])[0];
-        if (q) lineSug(line.replace(new RegExp("\\b" + q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "i"), BLANK), "Put the number in");
+        if (quote) lineSug(line.replace(new RegExp("(?:\\ba\\s+)?\\b" + reEsc(quote) + "\\b", "i"), BLANK), "Put the number in");
         break;
       }
       case "data-big-idea":
@@ -1964,26 +2094,23 @@
       case "cover-test": {
         if (code === "cover-test") {
           // Bring back a short detail the draft had, or leave room for one.
-          unusedPieces().filter((x) => (RX.digit.test(x.text) || RX.date.test(x.text) || /(?<=[a-z0-9,;:'’)] )[A-Z][a-z]+/.test(x.text)) && wordCount(x.text) <= 14)
+          unusedPieces().filter((x) => (RX.digit.test(x.text) || HAS_DATE.test(x.text) || /(?<=[a-z0-9,;:'’)] )[A-Z][a-z]+/.test(x.text)) && wordCount(x.text) <= 14)
             .slice(0, 2).forEach((x) => lineSug(line.replace(/\s*$/, " ") + x.text, "Bring back a detail"));
-          const { direct } = sharpen();
+          const { direct } = sharpen(line);
+          if (VAGUE_TIME.test(direct)) { lineSug(direct.replace(VAGUE_TIME, "by " + BLANK), "Name the day"); break; }
           if (/\?\s*$/.test(direct)) { lineSug(beforeEnd(direct, " by " + BLANK), "Add the date"); break; }
-          if (VAGUE_TIME.test(line)) { lineSug(line.replace(VAGUE_TIME, "by " + BLANK), "Name the day"); break; }
           if (/\blet me know\b/i.test(line)) { lineSug(line.replace(/\blet me know\b/i, (x) => x + " by " + BLANK), "Name the day"); break; }
-          if (!VAGUE_AMOUNT.test(line)) { lineSug(beforeEnd(line, " on " + BLANK), "Add the date"); break; }
+          if (!VAGUE_AMOUNT.test(line)) { if (EVENT.test(line)) lineSug(beforeEnd(line, " on " + BLANK), "Add the date"); break; }
         }
-        let swapped = line.replace(new RegExp(VAGUE_AMOUNT.source, "gi"), (v) => (/^(a lot|lots|tons|a bunch|a fortune)$/i.test(v) ? "$" + BLANK : "$" + BLANK));
-        swapped = swapped.replace(/\$___ (cheaper|more|less|higher|lower)/g, "$$" + BLANK + " $1").replace(/a \$___ amount/g, "$$" + BLANK);
-        lineSug(swapped, "Put the numbers in");
+        lineSug(vagueSwap(line), "Put the numbers in");
         const subject = (line.match(/^((?:the|our|my|your)\s+(?:[a-z]+\s){0,2}[a-z]+?)\s+(?:is|are|was|will|would|costs?|saves?)\b/i) || [])[1];
-        if (subject) lineSug(subject.charAt(0).toUpperCase() + subject.slice(1) + " saves us $" + BLANK + " a month: $" + BLANK + " instead of $" + BLANK + ".", "Knaflic's Big Idea");
+        if (subject && MONEYISH.test(line)) lineSug(capFirst(subject) + " saves us $" + BLANK + " a month: $" + BLANK + " instead of $" + BLANK + ".", "Knaflic's Big Idea");
         break;
       }
       case "data-bare": {
-        const n = (issue.quotes || [])[0];
-        if (n && line.includes(n)) {
-          lineSug(line.replace(n, n + " (up from " + BLANK + ")"), "Compare it");
-          lineSug(line.replace(n, n + " (instead of " + BLANK + ")"), "Compare it");
+        if (quote && line.includes(quote)) {
+          lineSug(line.replace(quote, quote + " (up from " + BLANK + ")"), "Compare it");
+          lineSug(line.replace(quote, quote + " (instead of " + BLANK + ")"), "Compare it");
         }
         break;
       }
@@ -2021,16 +2148,14 @@
         break;
       }
       case "mece-count": {
+        // Only when the items themselves say which are settled and which are still needed.
         const items = st.groups.flatMap(groupItems);
         if (items.some((t) => RX.need.test(t)) && items.some((t) => !RX.need.test(t))) add({ kind: "regroup", text: "Sort into Settled and Still needed" });
-        else if (items.length >= 2) add({ kind: "regroup", text: "Sort into Settled and Still needed", all: true });
         break;
       }
       case "mece-labels": {
-        const rule = (st.rule || "").toLowerCase();
-        const sets = /time/.test(rule) ? ["This week", "Next week", "Later"] : /option/.test(rule) ? ["Option A", "Option B", "Option C"] : ["Settled", "Still needed", "Later"];
-        const n = st.groups.filter((g) => groupItems(g).length).length;
-        add({ kind: "labels", labels: sets.slice(0, Math.max(2, Math.min(3, n))), text: "Name them " + sets.slice(0, Math.max(2, Math.min(3, n))).join(" / ") });
+        const labels = groupLabels(st);
+        if (labels.length) add({ kind: "labels", labels, text: "Name them " + labels.map((x) => x.label).join(" / ") });
         break;
       }
       case "mece-overlap": {
@@ -2038,8 +2163,7 @@
         break;
       }
       case "inv-when": {
-        const dates = datesIn(draftText).filter((d) => !line.includes(d));
-        dates.slice(0, 2).forEach((d) => lineSug(beforeEnd(line, " " + (/^\d|^the |^(?:mon|tues|wednes|thurs|fri|satur|sun)day/i.test(d) ? "on " : /^(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(d) ? "in " : "") + d), "Add the date from your draft"));
+        datesIn(draftText).filter((d) => !line.includes(d)).slice(0, 2).forEach((d) => lineSug(beforeEnd(line, " " + withOn(d)), "Add the date from your draft"));
         if (VAGUE_TIME.test(line)) lineSug(line.replace(VAGUE_TIME, "by " + BLANK), "Name the day");
         else lineSug(beforeEnd(line, " on " + BLANK), "Add the date");
         break;
@@ -2051,8 +2175,7 @@
       }
       case "P6":
       case "R1": {
-        const sents = sentencesOf(line);
-        const long = sents.find((x) => wordCount(x) > 25) || line;
+        const long = sentencesOf(line).find((x) => wordCount(x) > 25) || line;
         const parts = looseSplit(long);
         if (parts.length > 1) lineSug(line.replace(long, parts.join(" ")), "Split it in two");
         break;
@@ -2066,12 +2189,19 @@
         break;
       }
       case "wwb-subject": {
-        const ask = String(st.point || "").replace(/^(?:could|can|would|will) (?:you|we)\s+(?:please\s+)?|^please\s+/i, "").replace(/[?.!]+$/, "").trim();
-        if (ask) {
-          const short = ask.split(/\s+/).slice(0, 10).join(" ");
-          lineSug(short.charAt(0).toUpperCase() + short.slice(1), "From your point");
-          const d = datesIn(st.point)[0] || datesIn(draftText)[0];
-          if (d && !short.includes(d)) lineSug(short.charAt(0).toUpperCase() + short.slice(1) + " by " + d, "From your point");
+        // The point's ask as a phrase: "Could we push the deck back?" -> "Push the deck back".
+        const { direct } = sharpen(String(st.point || ""));
+        let ask = direct.replace(/^(?:could|can|would|will) (?:you|we)\s+(?:please\s+)?|^please\s+/i, "").replace(/[?.!]+$/, "").trim();
+        if (wordCount(ask) > 12) {
+          const words = ask.split(/\s+/).slice(0, 12).join(" ");
+          const cut = Math.max(words.lastIndexOf(","), words.search(/\s(?:and|so|because|but)\s(?!.*\s(?:and|so|because|but)\s)/));
+          ask = cut > 0 && wordCount(words.slice(0, cut)) >= 4 ? words.slice(0, cut).replace(/[,\s]+$/, "") : "";
+        }
+        const specific = RX.digit.test(ask) || HAS_DATE.test(ask) || /(?<=[a-z0-9,;:'’)] )[A-Z][a-z]+/.test(ask);
+        if (ask && wordCount(ask) >= 4 && (!RX.vague.test(ask) || specific)) {
+          lineSug(capFirst(ask), "From your point");
+          const d = datesIn(st.point).filter((x) => !ask.includes(x))[0];
+          if (d) lineSug(capFirst(ask) + " by " + d, "From your point");
         }
         break;
       }
@@ -2080,24 +2210,25 @@
         add({ kind: "line", text: "", label: "Cut the ending" });
         break;
       case "C2": {
-        const m = /\b(?:it'?s|this is|that'?s)\s+not\s+(?:just\s+)?(?:about\s+)?[^,—–-]+[,—–-]+\s*(?:it'?s|this is|that'?s)\s+(?:about\s+)?([^.!?]+)/i.exec(line);
-        if (m) lineSug(line.slice(0, m.index) + "It's about " + m[1].trim() + line.slice(m.index + m[0].length), "Keep the real point");
+        // Keep the writer's own second clause: "That's not a gift, that's a loan." -> "That's a loan."
+        const at = quote ? line.toLowerCase().indexOf(quote.toLowerCase()) : -1;
+        const tail = /((?:it|this|that|he|she|they)(?:'s|’s| is| was| are| were))$/i.exec(quote);
+        if (at >= 0 && tail) {
+          const before = line.slice(0, at);
+          const rest = line.slice(at + quote.length - tail[1].length);
+          const atStart = !before.trim() || /[.!?]\s*$/.test(before);
+          lineSug(before + (atStart ? capFirst(rest) : rest.charAt(0).toLowerCase() + rest.slice(1)), "Keep the real point");
+        }
         break;
       }
       case "C7": case "A2": {
-        if (code === "A2") {
-          const q = ((issue.quotes || [])[0] || "").trim();
-          if (q) lineSug(line.replace(new RegExp("\\b" + reEsc(q) + "\\b", "i"), BLANK), "Say what you saw");
-        }
+        if (code === "A2" && quote) lineSug(line.replace(new RegExp("\\b" + reEsc(quote) + "\\b", "i"), BLANK), "Say what you saw");
         let swapped = line;
-        for (const q of issue.quotes || []) {
-          for (const w of q.split(/,\s*/)) {
-            const k = w.trim().toLowerCase();
-            if (VOCAB_SWAP[k] === undefined) continue;
-            swapped = swapped.replace(new RegExp("\\s*\\b" + k + "\\b", "i"), VOCAB_SWAP[k] ? " " + VOCAB_SWAP[k] : "");
-          }
-        }
-        lineSug(applyPairs(swapped, []), "Plain words");
+        for (const [re, to] of PUFF_SWAP) swapped = swapped.replace(re, to);
+        const words = (issue.quotes || []).flatMap((q) => q.split(/,\s*/)).map((w) => w.trim().toLowerCase()).filter(Boolean);
+        for (const w of words) if (VOCAB_SWAP[w]) swapped = swapWord(swapped, w, VOCAB_SWAP[w]);
+        // Only when every flagged word found a plain one.
+        if (!words.some((w) => new RegExp("\\b" + reEsc(w) + "\\b", "i").test(swapped))) lineSug(swapped, "Plain words");
         break;
       }
       case "A1": {
@@ -2107,56 +2238,77 @@
         break;
       }
       case "B1": {
-        lineSug(line.replace(/,\s*\w+ing\b[^.!?]*([.!?])/, "$1"), "Cut the tail");
+        // Cut the flagged tail, and only that: ", ensuring the kids..." up to the end of its sentence.
+        const at = quote ? line.toLowerCase().indexOf(quote.toLowerCase()) : -1;
+        if (at >= 0) {
+          const end = line.slice(at).search(/[.!?]/);
+          lineSug(line.slice(0, at).replace(/,\s*$/, "") + (end >= 0 ? line.slice(at + end) : "."), "Cut the tail");
+        }
         break;
       }
       case "B2": {
-        const q = (issue.quotes || [])[0];
-        if (q) {
-          const said = /(?:ed|have said|has shown|have shown|have noted)$/i.test(q) ? " said" : " says";
-          lineSug(line.replace(new RegExp(reEsc(q), "i"), BLANK + said), "Name the source");
-          lineSug(line.replace(new RegExp(reEsc(q), "i"), "I think"), "Own it");
+        if (quote) {
+          const said = /(?:ed|have said|has shown|have shown|have noted)$/i.test(quote) ? " said" : " says";
+          lineSug(line.replace(new RegExp(reEsc(quote), "i"), BLANK + said), "Name the source");
+          lineSug(line.replace(new RegExp(reEsc(quote), "i"), "I think"), "Own it");
         }
         break;
       }
       case "T3": {
         const cleaned = line.replace(/\b(?:I'?m\s+)?(?:so |really |very |truly )?sorry[,!.]\s+(?=(?:so |really |very |truly )?sorry)/i, "")
           .replace(/\b(?:so|really|very|truly) sorry\b/i, "sorry");
-        lineSug(cleaned.charAt(0).toUpperCase() + cleaned.slice(1), "Apologize once");
+        lineSug(capFirst(cleaned), "Apologize once");
         break;
       }
       case "T5": {
-        // Every harsh word in the line, softened the same way.
-        const harsh = Array.from(new Set((line.match(new RegExp(Object.keys(HARSH_SWAP).map(reEsc).join("|"), "gi")) || []).map((x) => x.toLowerCase().replace(/’/g, "'"))));
+        // Calmer words that keep the sentence whole: "I demand that you" -> "I'd ask that you".
+        const money = MONEYISH.test(line);
         for (const k of [0, 1]) {
-          let soft = line;
-          for (const q of harsh) {
-            const to = (HARSH_SWAP[q] || HARSH_SWAP[q.replace("'", "")] || [])[k];
-            if (to) soft = soft.replace(new RegExp(reEsc(q).replace("'", "['’]?"), "i"), (m) => (/^[A-Z]/.test(m) && m !== "I" && !/^I /.test(m) ? capFirst(to) : to));
-          }
+          const soft = line
+            .replace(/\bI demand that\b/i, k ? "I'm asking that" : "I'd ask that")
+            .replace(/\bI demand to\b/i, "I'd like to")
+            .replace(/\bI demand\b/i, k ? "I'm asking for" : "I'd like")
+            .replace(/\b((?:is|was|are|were)\s+|['’]s\s+)(?:completely |totally |absolutely |simply |just |frankly )?unacceptable\b/i, (m, aux) => aux + (k ? "a problem for us" : "not what we agreed"))
+            .replace(/\b((?:is|was|are|were)\s+|['’]s\s+)(?:completely |totally |absolutely |simply |just |frankly )?ridiculous\b/i, (m, aux) => aux + (k ? "frustrating" : money ? "more than I expected" : "hard to understand"))
+            .replace(/\bI shouldn['’]?t have to\b/i, "I'd rather not have to");
           lineSug(soft, "A calmer word");
         }
         break;
       }
       case "T6": {
-        const m = /\bnot sure if you saw ([^,.!?]+)[,.!?]?\s*(?:but\s+)?(.*)$/i.exec(line);
+        const m = /\b(?:I['’]?m |I am )?not sure if you saw ([^,.!?]+)[,.!?]?\s*(?:but\s+)?(.*)$/i.exec(line);
         if (m) {
           const before = line.slice(0, m.index);
           const what = m[1].trim();
-          lineSug(before + (m[2] ? "In case " + what + " got buried, " + m[2] : "Following up on " + what + "."), "Ask fresh");
+          const rep = m[2] ? "in case " + what + " got buried, " + m[2] : "following up on " + what + ".";
+          lineSug(before + (before.trim() ? rep : capFirst(rep)), "Ask fresh");
         }
         break;
       }
       case "T4": {
-        const q = ((issue.quotes || [])[0] || "").toLowerCase();
+        const q = quote.toLowerCase();
         if (/^(?:i think|possibly)$/.test(q)) lineSug(applyPairs(line.replace(new RegExp("\\b" + q + "\\b,?\\s*", "i"), ""), []), "Commit to it");
         break;
       }
       case "C3": {
-        let swapped = line;
-        for (const [re, to] of PUFF_SWAP) swapped = swapped.replace(re, to);
-        for (const [re, to] of COPULA_SWAP) if (re.test(swapped)) { swapped = swapped.replace(re, to); break; }
-        lineSug(swapped, "Use is or has");
+        // "serves as" -> "is", "Would you serve as" -> "Would you be", "I'm serving as" -> "I'm".
+        let s = line;
+        for (const [re, to] of PUFF_SWAP) s = s.replace(re, to);
+        const m = /\b(serves|serve|served|serving|stands|stand|stood|standing|functions|function|functioned|functioning|acts|act|acted|acting|operates|operate|operated|operating) as\b\s*/i.exec(s);
+        if (m) {
+          const before = s.slice(0, m.index);
+          const v = m[1].toLowerCase();
+          let to = null;
+          if (!/(?:s|ed|ing)$/.test(v) && /\b(?:would|could|can|will|should|may|might|must|to|please)\b(?:\s+\w+)?\s+$/i.test(before)) to = "be ";
+          else if (/ing$/.test(v) && /(?:\b(?:am|is|are|was|were|be|been)|['’](?:m|re|s))\s*$/i.test(before)) to = "";
+          else if (/^(?:serves|stands|functions|acts|operates)$/.test(v)) to = "is ";
+          else if (/^(?:served|stood|functioned|acted|operated)$/.test(v)) to = /\b(?:we|you|they)\s+$/i.test(before) ? "were " : "was ";
+          if (to !== null) s = before + to + s.slice(m.index + m[0].length);
+        } else {
+          s = s.replace(/\bboasts\b/i, (x) => matchCase(x, "has")).replace(/\bboasted\b/i, (x) => matchCase(x, "had"))
+            .replace(/\b(this|that|it)\s+represents\b/i, "$1 is").replace(/\brefers to\b/i, "means");
+        }
+        lineSug(s, "Use is or has");
         break;
       }
       case "H1": {
@@ -2168,45 +2320,41 @@
       case "A4":
       case "B4":
       case "D7": {
-        const q = (issue.quotes || [])[0];
-        if (q) lineSug(applyPairs(line.replace(new RegExp(reEsc(q) + "(?:\\s+that)?[,:]?\\s*", "i"), ""), []), "Cut it");
+        if (quote) lineSug(applyPairs(line.replace(new RegExp(reEsc(quote) + "(?:\\s+that)?[,:]?\\s*", "i"), ""), []), "Cut it");
         break;
       }
       case "B3": {
-        const q = (issue.quotes || [])[0];
-        if (q) lineSug(line.replace(new RegExp(reEsc(q), "i"), BLANK), "Say how they're connected");
+        if (quote) lineSug(line.replace(new RegExp(reEsc(quote), "i"), BLANK), "Say how they're connected");
         break;
       }
       case "B5": {
-        const q = (issue.quotes || [])[0];
-        if (q) {
-          lineSug(line.replace(q, BLANK), "Fill it in");
-          lineSug(applyPairs(line.replace(q, ""), []), "Cut it");
+        if (quote) {
+          lineSug(line.replace(quote, BLANK), "Fill it in");
+          lineSug(applyPairs(line.replace(quote, ""), []), "Cut it");
         }
         break;
       }
       case "P4": {
-        const q = (issue.quotes || [])[0];
-        if (q && /^(?:the|my|our|your|this|that)\s/i.test(q) && wordCount(q) <= 4) {
-          const first = line.indexOf(q);
-          const second = first >= 0 ? line.indexOf(q, first + q.length) : -1;
+        if (quote && /^(?:the|my|our|your|this|that)\s/i.test(quote) && wordCount(quote) <= 4) {
+          const first = line.indexOf(quote);
+          const second = first >= 0 ? line.indexOf(quote, first + quote.length) : -1;
           const at = second > 0 ? second : first;
-          if (at >= 0) lineSug(line.slice(0, at) + (at === 0 ? "It" : "it") + line.slice(at + q.length), "Say it once");
+          if (at >= 0) lineSug(line.slice(0, at) + (at === 0 ? "It" : "it") + line.slice(at + quote.length), "Say it once");
         }
         break;
       }
       case "P5": {
-        // "I called. I left a note. I sent a text." -> "I called, left a note and sent a text."
+        // Start this one differently, or combine three same-start sentences on one line.
         const ss = sentencesOf(line);
-        const w = ((issue.quotes || [])[0] || "").split(/\s+/)[0];
+        const w = quote.split(/\s+/)[0];
         if (w && ss.length === 1 && new RegExp("^" + reEsc(w) + "\\b").test(line.trim())) {
-          const rest = w === "I" ? line.trim() : line.trim().charAt(0).toLowerCase() + line.trim().slice(1);
+          const rest = lowerFirst(line.trim(), namesIn(draftText + " " + line), null);
           lineSug("Then " + rest, "Start it differently");
           lineSug("After that, " + rest, "Start it differently");
         }
         const same = ss.filter((x) => new RegExp("^" + reEsc(w) + "\\b").test(x));
         if (same.length >= 3 && w) {
-          const rest = same.map((x, k) => (k === 0 ? x : x.replace(new RegExp("^" + w + "\\s+"), "")).replace(/[.!]+$/, ""));
+          const rest = same.map((x, k) => (k === 0 ? x : x.replace(new RegExp("^" + reEsc(w) + "\\s+"), "")).replace(/[.!]+$/, ""));
           const joined = rest.slice(0, -1).join(", ") + " and " + rest[rest.length - 1] + ".";
           let out2 = line;
           same.forEach((x, k) => { out2 = out2.replace(x, k === 0 ? joined : ""); });
@@ -2215,9 +2363,10 @@
         break;
       }
       case "F1": {
-        const m = /(\d{1,2})\/(\d{1,2})/.exec((issue.quotes || [])[0] || "");
-        if (m && /doesn't exist/.test(issue.title)) {
-          const mo = +m[1];
+        // A day past the month's end: offer the last day of that month and the first of the next.
+        const m = /(\d{1,2})\/(\d{1,2})/.exec(quote);
+        const mo = m ? +m[1] : 0;
+        if (m && mo >= 1 && mo <= 12 && /doesn't exist/.test(issue.title)) {
           const last = new Date(Date.UTC((polish.today || new Date()).getFullYear(), mo, 0)).getUTCDate();
           lineSug(line.replace(m[0], mo + "/" + last), "The last day of that month");
           lineSug(line.replace(m[0], (mo % 12 + 1) + "/1"), "The first day of the next month");
@@ -2232,19 +2381,55 @@
       const f = sampleFill(x.text);
       return !RX.vague.test(f) || RX.digit.test(f) || RX.date.test(f);
     });
-    kept.forEach((x) => { x.blank = x.kind === "line" && blanks(x.text); });
+    kept.forEach((x) => { x.blank = x.kind === "line" && blankCount(x.text) > blankCount(line); });
     return kept;
+  }
+
+  // Group names the items themselves support, for the rule in use. Never a status
+  // the items don't state, and never a name another group already has.
+  function groupLabels(st) {
+    const rule = squash(st.rule).toLowerCase();
+    const taken = new Set(st.groups.map((g) => squash(g.label).toLowerCase()).filter(Boolean));
+    const out = [];
+    st.groups.forEach((g, index) => {
+      const items = groupItems(g);
+      if (!items.length || squash(g.label)) return;
+      let label = null;
+      if (/settled|needed/.test(rule)) {
+        if (items.every((t) => RX.need.test(t))) label = "Still needed";
+        else if (items.every((t) => !RX.need.test(t))) label = "Settled";
+      } else if (/person|who/.test(rule)) {
+        const firsts = items.map((t) => (/^([A-Z][a-z]+)\b/.exec(t) || [])[1]);
+        if (firsts[0] && !LOWERABLE.has(firsts[0].toLowerCase()) && firsts.every((x) => x === firsts[0])) label = firsts[0];
+      } else if (/time|day|when/.test(rule)) {
+        const days = items.map((t) => datesIn(t)[0]);
+        if (days[0] && days.every((x) => x && x.toLowerCase() === days[0].toLowerCase())) label = capFirst(days[0]);
+      }
+      if (label && !taken.has(label.toLowerCase())) { taken.add(label.toLowerCase()); out.push({ index, label }); }
+    });
+    return out;
   }
 
   // What a blank will likely hold, to test an edit before the writer fills it.
   function sampleFill(text) {
     return String(text || "").replace(/\$___/g, "$40").replace(/\((up from|instead of) ___\)/g, "($1 $96)")
-      .replace(/\b(by|on|until|before|from|to) ___/gi, "$1 Friday").replace(/___ (says|said)/g, "Consumer Reports $1").replace(/___/g, "the rent");
+      .replace(/\b(by|on|until|before|from|to) ___/gi, "$1 Friday").replace(/___ (says|said)/g, "Consumer Reports $1")
+      .replace(/^___ /, "Dana ").replace(/___/g, "the rent");
   }
 
-  // Applies a recommended edit to the card it belongs to.
+  // Applies a recommended edit to the card it belongs to. Never changes the state it's given.
   function applySuggestion(state, card, sug) {
     const st = JSON.parse(JSON.stringify(state));
+    const items = () => st.groups.flatMap(groupItems);
+    const regroup = () => {
+      const all = items();
+      const needs = all.filter((t) => RX.need.test(t));
+      const settled = all.filter((t) => !RX.need.test(t));
+      if (!needs.length || !settled.length) return false;
+      st.groups = [{ label: "Settled", items: settled.join("\n"), mode: "auto" }, { label: "Still needed", items: needs.join("\n"), mode: "auto" }];
+      st.rule = "Settled vs. still needed";
+      return true;
+    };
     if (sug.kind === "line") setField(st, card.field, card.index, sug.text);
     else if (sug.kind === "split") {
       st.point = finish(sug.first);
@@ -2252,19 +2437,11 @@
       else st.support = [finish(sug.rest)].concat(st.support.filter((x) => x.trim()));
     } else if (sug.kind === "rule") {
       st.rule = sug.text;
-      // "Settled vs. still needed" can sort the items on its own.
-      if (/^settled/i.test(sug.text) && st.groups.filter((g) => groupItems(g).length).length < 2) return applySuggestion(st, card, { kind: "regroup" });
-    } else if (sug.kind === "regroup") {
-      const items = st.groups.flatMap(groupItems);
-      const needs = items.filter((t) => RX.need.test(t));
-      const settled = items.filter((t) => !RX.need.test(t));
-      st.groups = settled.length && needs.length
-        ? [{ label: "Settled", items: settled.join("\n"), mode: "auto" }, { label: "Still needed", items: needs.join("\n"), mode: "auto" }]
-        : [{ label: "Settled", items: items.slice(0, Math.ceil(items.length / 2)).join("\n"), mode: "auto" }, { label: "Still needed", items: items.slice(Math.ceil(items.length / 2)).join("\n"), mode: "auto" }];
-      st.rule = "Settled vs. still needed";
-    } else if (sug.kind === "labels") {
-      let k = 0;
-      st.groups.forEach((g) => { if (groupItems(g).length && !squash(g.label) && sug.labels[k]) g.label = sug.labels[k++]; else if (groupItems(g).length) k++; });
+      // "Settled vs. still needed" sorts the items too, when they say which is which.
+      if (/^settled/i.test(sug.text) && st.groups.filter((g) => groupItems(g).length).length < 2) regroup();
+    } else if (sug.kind === "regroup") regroup();
+    else if (sug.kind === "labels") {
+      for (const x of sug.labels || []) if (st.groups[x.index] && !squash(st.groups[x.index].label)) st.groups[x.index].label = x.label;
     } else if (sug.kind === "keep-item") {
       let dropped = false;
       st.groups.forEach((g) => {

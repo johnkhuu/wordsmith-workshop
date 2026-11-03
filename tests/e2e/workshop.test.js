@@ -503,3 +503,62 @@ test("every example can be finished with the suggested edits alone", async () =>
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+test("a blank from a suggested edit never reaches the rewrite, whichever way you leave the card", async () => {
+  const { page, context, errors } = await open();
+  const pickBlank = () => page.locator(".wz-sug", { hasText: "fill in the blank" }).first().click();
+  // 1. "I'm done" straight after picking it.
+  await page.click('[data-example="pyramid"]');
+  await page.click("#wz-rewrite");
+  await pickBlank();
+  assert.doesNotMatch(await rewrite(page), /___/, "the rewrite waits for the blank");
+  await page.click("#wz-finish");
+  assert.doesNotMatch(await page.$eval("#wz-final", (x) => x.value || x.textContent), /___/);
+  // 2. Leaving for another step and coming back: the note is still open, the line as it was.
+  await page.click('.wz-step[data-go="fix"]');
+  await pickBlank();
+  await page.click('.wz-step[data-go="review"]');
+  await page.click('.wz-step[data-go="fix"]');
+  assert.doesNotMatch(await rewrite(page), /___/);
+  assert.match(await page.textContent("#wz-task"), /vague word/);
+  // 3. A one-click choice on the same card: "a lot more" has a blank edit, "Friday 11/14" a choice.
+  await page.click('.wz-step[data-go="paste"]');
+  await page.fill("#ws-draft", "Hi Sam, The new hall costs a lot more if we book it for Friday 11/14. Could you confirm the date by Monday? Thanks, Jo");
+  await page.click("#wz-check");
+  await page.evaluate(() => document.querySelectorAll("#ws details").forEach((d) => { d.open = true; }));
+  await page.check('input[data-method="data"]');
+  await page.click("#wz-rewrite");
+  for (let i = 0; i < 6 && !(await page.locator("#wz-task .wz-choice").count()); i++) await page.click('#wz-task [data-action="skip"]');
+  assert.ok(await page.locator("#wz-task .wz-choice").count(), "no card with a choice");
+  await pickBlank();
+  await page.locator("#wz-task .wz-choice").first().click();
+  assert.doesNotMatch(await rewrite(page), /___/);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test("a writer's own blank (a sign-up line) never blocks Apply or Save", async () => {
+  const { page, context, errors } = await open();
+  await page.fill("#ws-draft", "Hi all, Could everyone sign up for the potluck by Friday? Sign-up: ___ brings salad and ___ brings dessert!! Thanks, Jo");
+  await page.click("#wz-check");
+  await page.click("#wz-rewrite");
+  assert.match(await page.inputValue("#wz-input"), /___ brings salad/);
+  await page.click('#wz-task [data-action="apply"]');
+  assert.doesNotMatch(await page.textContent("#wz-task"), /Fill in the blank/, "the writer's own blank was treated as ours");
+  assert.match(await rewrite(page), /Sign-up: ___ brings salad and ___ brings dessert!/);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test("on a phone, the note about a blank shows up on screen", async () => {
+  const context = await browser.newContext({ viewport: { width: 375, height: 667 }, reducedMotion: "reduce" });
+  const page = await context.newPage();
+  await page.route("**/*", (route) => (route.request().url().startsWith(site.url) ? route.continue() : route.fulfill({ status: 200, contentType: "text/css", body: "" })));
+  await page.goto(site.url);
+  await page.click('[data-example="data"]');
+  await page.click("#wz-rewrite");
+  await page.locator(".wz-sug", { hasText: "fill in the blank" }).first().click();
+  const inView = await page.$eval(".wz-result[data-blank]", (el) => { const r = el.getBoundingClientRect(); return r.top > -2 && r.bottom <= innerHeight + 2; });
+  assert.equal(inView, true);
+  await context.close();
+});
